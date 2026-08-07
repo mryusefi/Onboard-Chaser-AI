@@ -30,17 +30,37 @@ def create_onboarding(
     db.flush()
 
     if document_names is None:
-        document_names = [
-            "Government ID",
-            "Proof of Address",
-            "Tax Form (W-4)",
-            "Signed Offer Letter",
+        default_docs = [
+            {
+                "name": "Government ID",
+                "instructions": "Upload a clear, full-color photo or scan of your government-issued photo ID (passport, driver's license, or national ID card). All four corners must be visible and text must be legible.",
+                "accepted_formats": "PDF, JPG, PNG",
+            },
+            {
+                "name": "Proof of Address",
+                "instructions": "Upload a recent utility bill, bank statement, or official letter showing your current residential address. The document must be dated within the last 3 months.",
+                "accepted_formats": "PDF, JPG, PNG",
+            },
+            {
+                "name": "Tax Form (W-4)",
+                "instructions": "Download and complete the IRS W-4 form. Ensure all fields are filled, sign and date the form before uploading. If you are unsure about any section, contact HR before submitting.",
+                "accepted_formats": "PDF",
+            },
+            {
+                "name": "Signed Offer Letter",
+                "instructions": "Upload the signed copy of your employment offer letter. Both your signature and the employer's signature must be present. Scan or photograph the entire document.",
+                "accepted_formats": "PDF, JPG, PNG",
+            },
         ]
+    else:
+        default_docs = [{"name": n, "instructions": None, "accepted_formats": "PDF, JPG, PNG"} for n in document_names]
 
-    for doc_name in document_names:
+    for doc_data in default_docs:
         doc = Document(
             onboarding_id=onboarding.id,
-            name=doc_name,
+            name=doc_data["name"],
+            instructions=doc_data.get("instructions"),
+            accepted_formats=doc_data.get("accepted_formats"),
             required=True,
         )
         db.add(doc)
@@ -116,6 +136,8 @@ def validate_candidate_access(db: Session, token: str) -> dict:
             "id": str(doc.id),
             "name": doc.name,
             "description": doc.description,
+            "instructions": doc.instructions,
+            "accepted_formats": doc.accepted_formats,
             "required": doc.required,
             "status": doc.status.value,
         }
