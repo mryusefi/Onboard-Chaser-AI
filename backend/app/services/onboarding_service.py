@@ -50,17 +50,19 @@ def create_onboarding(
     return onboarding
 
 
-def generate_magic_link(db: Session, onboarding_id: UUID) -> dict:
+def generate_magic_link(db: Session, candidate_id: UUID) -> dict:
     """Generate a secure magic link token for a candidate to access their portal."""
+    candidate = db.query(Candidate).filter(
+        Candidate.id == candidate_id
+    ).first()
+    if not candidate:
+        raise ValueError("Candidate not found")
+
     onboarding = db.query(Onboarding).filter(
-        Onboarding.id == onboarding_id
+        Onboarding.candidate_id == candidate_id
     ).first()
     if not onboarding:
-        raise ValueError("Onboarding not found")
-
-    candidate = db.query(Candidate).filter(
-        Candidate.id == onboarding.candidate_id
-    ).first()
+        raise ValueError("Onboarding not found for this candidate")
 
     token = create_magic_token(str(candidate.id), candidate.email)
     expires_at = datetime.now(timezone.utc) + timedelta(
@@ -81,7 +83,7 @@ def validate_candidate_access(db: Session, token: str) -> dict:
     if not payload:
         raise ValueError("Invalid or expired token")
 
-    candidate_id = payload.get("sub")
+    candidate_id = UUID(payload.get("sub"))
     candidate = db.query(Candidate).filter(
         Candidate.id == candidate_id
     ).first()
@@ -95,7 +97,12 @@ def validate_candidate_access(db: Session, token: str) -> dict:
         raise ValueError("No onboarding process found")
 
     if onboarding.token_expires_at:
-        if datetime.now(timezone.utc) > onboarding.token_expires_at:
+        now = datetime.now(timezone.utc)
+        expires = onboarding.token_expires_at
+        # Normalize to timezone-aware for comparison (SQLite returns naive)
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        if now > expires:
             raise ValueError("Token has expired")
 
     if not onboarding.is_token_used:

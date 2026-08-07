@@ -4,6 +4,9 @@ import os
 import pytest
 from datetime import datetime, timedelta, timezone
 
+# Set testing flag before importing app
+os.environ["TESTING"] = "1"
+
 # Ensure backend app is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
