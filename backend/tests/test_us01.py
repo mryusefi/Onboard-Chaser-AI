@@ -4,72 +4,33 @@ import os
 import pytest
 from datetime import datetime, timedelta, timezone
 
-# Set testing flag before importing app
-os.environ["TESTING"] = "1"
-
-# Ensure backend app is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
 from app.main import app
-from app.core.database import Base, get_db
-from app.core.security import create_magic_token, validate_magic_token
 from app.models.models import Candidate, Onboarding, User, Document
-from app.core.security import pwd_context
+from app.core.security import pwd_context, validate_magic_token, create_magic_token
+from tests.conftest import TestingSession
 
-# --- Test Database Setup ---
-TEST_DATABASE_URL = "sqlite:///./test_us01.db"
-engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
 
 
-@pytest.fixture(autouse=True)
-def setup_db():
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
-
-
 @pytest.fixture
-def db_session():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-@pytest.fixture
-def hr_user(db_session):
+def hr_user(db):
     user = User(
         email="hr@test.com",
         full_name="Test HR",
         hashed_password=pwd_context.hash("password123"),
         is_hr=True,
     )
-    db_session.add(user)
-    db_session.commit()
-    db_session.refresh(user)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
     return user
 
 
 @pytest.fixture
-def candidate(db_session, hr_user):
+def candidate(db, hr_user):
     candidate = Candidate(
         email="candidate@test.com",
         full_name="Test Candidate",
@@ -77,9 +38,9 @@ def candidate(db_session, hr_user):
         position="Software Engineer",
         created_by=hr_user.id,
     )
-    db_session.add(candidate)
-    db_session.commit()
-    db_session.refresh(candidate)
+    db.add(candidate)
+    db.commit()
+    db.refresh(candidate)
     return candidate
 
 
@@ -91,7 +52,7 @@ def candidate(db_session, hr_user):
 class TestCreateOnboardingPage:
     """Task: Create candidate onboarding page (API endpoint)."""
 
-    def test_start_onboarding_creates_record(self, db_session, candidate):
+    def test_start_onboarding_creates_record(self, candidate):
         resp = client.post(f"/api/v1/onboarding/{candidate.id}")
         assert resp.status_code == 200
         data = resp.json()
@@ -102,7 +63,7 @@ class TestCreateOnboardingPage:
         resp = client.post("/api/v1/onboarding/not-a-uuid")
         assert resp.status_code == 400
 
-    def test_duplicate_onboarding_rejected(self, db_session, candidate):
+    def test_duplicate_onboarding_rejected(self, candidate):
         client.post(f"/api/v1/onboarding/{candidate.id}")
         resp = client.post(f"/api/v1/onboarding/{candidate.id}")
         assert resp.status_code == 400
@@ -111,12 +72,8 @@ class TestCreateOnboardingPage:
 class TestCreateUniqueURL:
     """Task: Create unique onboarding URL."""
 
-    def test_magic_link_generation(self, db_session, candidate):
-        # First create onboarding
-        resp = client.post(f"/api/v1/onboarding/{candidate.id}")
-        onboarding_id = resp.json()["id"]
-
-        # Generate magic link
+    def test_magic_link_generation(self, candidate):
+        client.post(f"/api/v1/onboarding/{candidate.id}")
         resp = client.post(
             "/api/v1/onboarding/magic-link",
             json={"candidate_id": str(candidate.id)},
@@ -153,11 +110,10 @@ class TestSecureAccessToken:
 class TestTokenExpiration:
     """Task: Add token expiration mechanism."""
 
-    def test_expired_token_rejected(self, db_session, candidate):
+    def test_expired_token_rejected(self, candidate):
         from jose import jwt
         from app.core.config import settings
 
-        # Create a token that's already expired
         expired_payload = {
             "sub": str(candidate.id),
             "email": candidate.email,
@@ -172,11 +128,8 @@ class TestTokenExpiration:
 class TestValidateCandidateAccess:
     """Task: Validate candidate access request."""
 
-    def test_valid_token_accesses_portal(self, db_session, candidate):
-        # Create onboarding
+    def test_valid_token_accesses_portal(self, candidate):
         client.post(f"/api/v1/onboarding/{candidate.id}")
-
-        # Generate magic link
         resp = client.post(
             "/api/v1/onboarding/magic-link",
             json={"candidate_id": str(candidate.id)},
@@ -184,7 +137,6 @@ class TestValidateCandidateAccess:
         token_url = resp.json()["magic_link"]
         token = token_url.split("/onboard/")[1]
 
-        # Access portal
         resp = client.get(f"/api/v1/onboarding/portal/{token}")
         assert resp.status_code == 200
         data = resp.json()
@@ -200,11 +152,8 @@ class TestValidateCandidateAccess:
 class TestBasicOnboardingSession:
     """Task: Create basic onboarding session."""
 
-    def test_session_marks_started(self, db_session, candidate):
-        # Create onboarding
+    def test_session_marks_started(self, candidate, db):
         client.post(f"/api/v1/onboarding/{candidate.id}")
-
-        # Generate + access portal
         resp = client.post(
             "/api/v1/onboarding/magic-link",
             json={"candidate_id": str(candidate.id)},
@@ -212,20 +161,19 @@ class TestBasicOnboardingSession:
         token = resp.json()["magic_link"].split("/onboard/")[1]
         client.get(f"/api/v1/onboarding/portal/{token}")
 
-        # Verify onboarding is now in_progress
-        onboarding = db_session.query(Onboarding).filter(
+        onboarding = db.query(Onboarding).filter(
             Onboarding.candidate_id == candidate.id
         ).first()
         assert onboarding.status.value == "in_progress"
         assert onboarding.is_token_used is True
         assert onboarding.started_at is not None
 
-    def test_default_documents_created(self, db_session, candidate):
+    def test_default_documents_created(self, candidate, db):
         client.post(f"/api/v1/onboarding/{candidate.id}")
-        onboarding = db_session.query(Onboarding).filter(
+        onboarding = db.query(Onboarding).filter(
             Onboarding.candidate_id == candidate.id
         ).first()
-        docs = db_session.query(Document).filter(
+        docs = db.query(Document).filter(
             Document.onboarding_id == onboarding.id
         ).all()
         doc_names = [d.name for d in docs]
