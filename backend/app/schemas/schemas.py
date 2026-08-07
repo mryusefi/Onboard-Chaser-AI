@@ -1,0 +1,94 @@
+from datetime import datetime
+from typing import Optional, List
+from uuid import UUID
+
+from pydantic import BaseModel, EmailStr
+
+
+# --- User Schemas ---
+class UserCreate(BaseModel):
+    email: str
+    full_name: str
+    password: str
+
+
+class UserResponse(BaseModel):
+    id: UUID
+    email: str
+    full_name: str
+    is_hr: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+# --- Candidate Schemas ---
+class CandidateCreate(BaseModel):
+    email: str
+    full_name: str
+    phone: Optional[str] = None
+    position: Optional[str] = None
+
+
+class CandidateResponse(BaseModel):
+    id: UUID
+    email: str
+    full_name: str
+    phone: Optional[str]
+    position: Optional[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# --- Onboarding Schemas ---
+class OnboardingResponse(BaseModel):
+    id: UUID
+    candidate_id: UUID
+    status: str
+    is_token_used: bool
+    started_at: Optional[datetime]
+    completed_at: Optional[datetime]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class OnboardingPortalResponse(BaseModel):
+    onboarding_id: UUID
+    candidate_name: str
+    candidate_email: str
+    status: str
+    documents: List[dict]
+
+
+# --- Document Schemas ---
+class DocumentResponse(BaseModel):
+    id: UUID
+    name: str
+    description: Optional[str]
+    required: bool
+    status: str
+    file_name: Optional[str]
+    uploaded_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
+# --- Magic Link ---
+class MagicLinkRequest(BaseModel):
+    candidate_id: UUID
+
+
+class MagicLinkResponse(BaseModel):
+    magic_link: str
+    expires_at: datetime
