@@ -11,60 +11,87 @@ import {
   Info,
   FileText,
   HelpCircle,
+  Upload,
+  X,
 } from 'lucide-react'
 
 const API_BASE = '/api/v1'
 
 const STATUS_CONFIG = {
-  completed: {
-    icon: CheckCircle,
-    color: 'text-green-500',
-    bg: 'bg-green-100',
-    text: 'text-green-700',
-    label: 'Completed',
-    ring: 'ring-green-200',
-  },
-  uploaded: {
-    icon: CheckCircle,
-    color: 'text-emerald-500',
-    bg: 'bg-emerald-100',
-    text: 'text-emerald-700',
-    label: 'Uploaded',
-    ring: 'ring-emerald-200',
-  },
-  pending: {
-    icon: Clock,
-    color: 'text-amber-500',
-    bg: 'bg-amber-100',
-    text: 'text-amber-700',
-    label: 'Pending',
-    ring: 'ring-amber-200',
-  },
-  missing: {
-    icon: AlertCircle,
-    color: 'text-red-500',
-    bg: 'bg-red-100',
-    text: 'text-red-700',
-    label: 'Missing',
-    ring: 'ring-red-200',
-  },
+  completed: { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-100', text: 'text-green-700', label: 'Completed', border: 'border-l-green-500' },
+  uploaded: { icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Uploaded', border: 'border-l-emerald-500' },
+  pending: { icon: Clock, color: 'text-amber-500', bg: 'bg-amber-100', text: 'text-amber-700', label: 'Pending', border: 'border-l-amber-400' },
+  missing: { icon: AlertCircle, color: 'text-red-500', bg: 'bg-red-100', text: 'text-red-700', label: 'Missing', border: 'border-l-red-500' },
 }
 
-function DocumentCard({ doc, index }) {
+const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.gif']
+
+function DocumentCard({ doc, index, onUploadSuccess }) {
   const [expanded, setExpanded] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadStatus, setUploadStatus] = useState(null) // null | 'success' | 'error'
+  const [uploadError, setUploadError] = useState('')
   const status = STATUS_CONFIG[doc.status] || STATUS_CONFIG.pending
   const StatusIcon = status.icon
 
+  const formatAccepted = doc.accepted_formats?.split(',').map(f => f.trim()) || ['PDF', 'JPG', 'PNG']
+
+  async function handleUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const ext = '.' + file.name.split('.').pop().toLowerCase()
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      setUploadStatus('error')
+      setUploadError(`Invalid file type. Allowed: ${formatAccepted.join(', ')}`)
+      return
+    }
+
+    setUploading(true)
+    setUploadStatus(null)
+    setUploadError('')
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const response = await fetch(`${API_BASE}/onboarding/document/${doc.id}/upload`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const err = await response.json()
+        setUploadStatus('error')
+        setUploadError(err.detail || 'Upload failed')
+      } else {
+        const result = await response.json()
+        setUploadStatus('success')
+        setUploadError('')
+        onUploadSuccess(doc.id, result)
+      }
+    } catch (err) {
+      setUploadStatus('error')
+      setUploadError(err.message || 'Network error')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   return (
-    <div className={`bg-white rounded-xl border border-slate-200 overflow-hidden transition-all duration-200 hover:border-primary-300 hover:shadow-md ${doc.status === 'completed' || doc.status === 'uploaded' ? 'border-l-4 border-l-green-500' : doc.status === 'missing' ? 'border-l-4 border-l-red-500' : 'border-l-4 border-l-amber-400'}`}>
+    <div className={`bg-white rounded-xl border border-slate-200 overflow-hidden transition-all duration-200 hover:border-primary-300 hover:shadow-md ${status.border}`}>
       {/* Main row */}
       <div className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-4 flex-1 min-w-0">
-            {/* Step number */}
-            <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${doc.status === 'completed' || doc.status === 'uploaded' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
+            {/* Step number / status icon */}
+            <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+              doc.status === 'completed' || doc.status === 'uploaded'
+                ? 'bg-green-100 text-green-700'
+                : 'bg-slate-100 text-slate-600'
+            }`}>
               {doc.status === 'completed' || doc.status === 'uploaded' ? (
-                <CheckCircle className="w-5 h-5" />
+                <StatusIcon className="w-5 h-5" />
               ) : (
                 index + 1
               )}
@@ -87,16 +114,53 @@ function DocumentCard({ doc, index }) {
                   {status.label}
                 </span>
               </div>
+
+              {/* Upload result message */}
+              {uploadStatus === 'success' && (
+                <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
+                  <CheckCircle className="w-4 h-4" />
+                  <span>File uploaded successfully!</span>
+                </div>
+              )}
+              {uploadStatus === 'error' && (
+                <div className="mt-2 flex items-center gap-2 text-sm text-red-600">
+                  <AlertCircle className="w-4 h-4" />
+                  <span>{uploadError}</span>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
             {(doc.status === 'pending' || doc.status === 'missing') && (
-              <button className="flex items-center gap-1.5 bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors shadow-sm">
-                <FileUp className="w-4 h-4" />
-                Upload
-              </button>
+              <label className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                uploading
+                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                  : 'bg-primary-600 text-white hover:bg-primary-700 shadow-sm cursor-pointer'
+              }`}>
+                {uploading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    Upload
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept={formatAccepted.map(f => {
+                    const maps = { PDF: '.pdf', JPG: '.jpg,.jpeg', PNG: '.png', GIF: '.gif' }
+                    return maps[f] || ''
+                  }).join(',')}
+                  onChange={handleUpload}
+                  disabled={uploading}
+                  className="hidden"
+                />
+              </label>
             )}
             {doc.instructions && (
               <button
@@ -124,14 +188,20 @@ function DocumentCard({ doc, index }) {
               {doc.accepted_formats && (
                 <div className="mt-3 flex items-center gap-2 flex-wrap">
                   <span className="text-xs text-slate-500 font-medium">Accepted formats:</span>
-                  {doc.accepted_formats.split(',').map((fmt) => (
-                    <span key={fmt.trim()} className="inline-flex items-center gap-1 text-xs bg-white border border-slate-200 text-slate-600 px-2 py-0.5 rounded-md">
+                  {formatAccepted.map((fmt) => (
+                    <span key={fmt} className="inline-flex items-center gap-1 text-xs bg-white border border-slate-200 text-slate-600 px-2 py-0.5 rounded-md">
                       <FileText className="w-3 h-3" />
-                      {fmt.trim()}
+                      {fmt}
                     </span>
                   ))}
                 </div>
               )}
+              {doc.status === 'pending' || doc.status === 'missing' ? (
+                <p className="mt-2 text-xs text-slate-400 flex items-center gap-1">
+                  <HelpCircle className="w-3 h-3" />
+                  Click the Upload button to submit this document
+                </p>
+              ) : null}
             </div>
           </div>
         </div>
@@ -166,6 +236,20 @@ function OnboardingPortal() {
     }
   }
 
+  function handleUploadSuccess(docId, result) {
+    setPortalData((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        documents: prev.documents.map((d) =>
+          d.id === docId
+            ? { ...d, status: 'uploaded', file_name: result.file_name }
+            : d
+        ),
+      }
+    })
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -196,7 +280,6 @@ function OnboardingPortal() {
     (d) => d.status === 'completed' || d.status === 'uploaded'
   ).length || 0
   const totalCount = portalData?.documents?.length || 0
-  const requiredCount = portalData?.documents?.filter((d) => d.required).length || 0
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
 
   return (
@@ -212,7 +295,7 @@ function OnboardingPortal() {
             Welcome, {portalData.candidate_name}
           </h1>
           <p className="text-blue-100 mt-2">
-            Please upload the required documents to complete your onboarding process.
+            Complete your onboarding by uploading the required documents below.
           </p>
         </div>
       </div>
@@ -225,12 +308,9 @@ function OnboardingPortal() {
               <h2 className="text-base font-semibold text-slate-900">Onboarding Progress</h2>
               <p className="text-xs text-slate-500 mt-0.5">
                 {completedCount} of {totalCount} documents submitted
-                {requiredCount > 0 && ` \u00b7 ${requiredCount} required`}
               </p>
             </div>
-            <div className="text-right">
-              <span className="text-2xl font-bold text-primary-600">{progressPercent}%</span>
-            </div>
+            <span className="text-2xl font-bold text-primary-600">{progressPercent}%</span>
           </div>
           <div className="w-full bg-slate-100 rounded-full h-3">
             <div
@@ -247,7 +327,7 @@ function OnboardingPortal() {
           {progressPercent === 100 && (
             <div className="mt-3 flex items-center gap-2 text-green-600 text-sm font-medium">
               <CheckCircle className="w-4 h-4" />
-              All documents have been submitted!
+              All documents have been submitted successfully!
             </div>
           )}
         </div>
@@ -255,22 +335,19 @@ function OnboardingPortal() {
 
       {/* Document Checklist */}
       <div className="max-w-3xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900">Required Documents</h2>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Click the arrow on each item to view detailed upload instructions.
-            </p>
-          </div>
-          <button className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-primary-600 transition-colors">
-            <HelpCircle className="w-4 h-4" />
-            Need help?
-          </button>
-        </div>
-
+        <h2 className="text-xl font-bold text-slate-900 mb-1">Required Documents</h2>
+        <p className="text-sm text-slate-500 mb-5">
+          Click the expand (chevron) icon on each document to view detailed upload
+          instructions, accepted file formats, and then upload your file.
+        </p>
         <div className="space-y-3">
           {portalData?.documents?.map((doc, index) => (
-            <DocumentCard key={doc.id} doc={doc} index={index} />
+            <DocumentCard
+              key={doc.id}
+              doc={doc}
+              index={index}
+              onUploadSuccess={handleUploadSuccess}
+            />
           ))}
         </div>
       </div>

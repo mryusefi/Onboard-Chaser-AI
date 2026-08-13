@@ -75,10 +75,13 @@ class DocumentResponse(BaseModel):
     id: UUID
     name: str
     description: Optional[str]
+    instructions: Optional[str] = None
+    accepted_formats: Optional[str] = None
     required: bool
     status: str
     file_name: Optional[str]
-    uploaded_at: Optional[datetime]
+    file_key: Optional[str] = None
+    uploaded_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

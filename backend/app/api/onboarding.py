@@ -1,6 +1,7 @@
+import io
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -9,11 +10,16 @@ from app.schemas.schemas import (
     OnboardingPortalResponse,
     MagicLinkRequest,
     MagicLinkResponse,
+    DocumentResponse,
 )
 from app.services.onboarding_service import (
     create_onboarding,
     generate_magic_link,
     validate_candidate_access,
+)
+from app.services.document_service import (
+    upload_file_to_storage,
+    get_document_for_upload,
 )
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
@@ -46,9 +52,32 @@ def start_onboarding(candidate_id: str, db: Session = Depends(get_db)):
         cid = UUID(candidate_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid candidate ID")
-
     try:
         onboarding = create_onboarding(db, cid)
         return onboarding
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/document/{document_id}", response_model=DocumentResponse)
+def get_document(document_id: str, db: Session = Depends(get_db)):
+    """Get a single document requirement by ID."""
+    try:
+        return get_document_for_upload(db, document_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/document/{document_id}/upload", response_model=DocumentResponse)
+async def upload_document(
+    document_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """Upload a file for a specific document requirement."""
+    try:
+        contents = await file.read()
+        result = upload_file_to_storage(db, document_id, contents, file.filename)
+        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
