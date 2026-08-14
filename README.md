@@ -158,7 +158,7 @@ npm run dev
 ```bash
 cd backend
 TESTING=1 python -m pytest tests/ -v
-# Expected: 42 passed (US01: 12, US02: 11, US03: 18)
+# Expected: 54 passed (US01: 12, US02: 11, US03: 18, US04: 12)
 ```
 
 Tests use an in-memory SQLite database (StaticPool) via `tests/conftest.py`, so
@@ -176,8 +176,8 @@ feature branch per story.
 |-------|-------|--------|----------------|-------|
 | US01  | Access onboarding portal via secure link | ✅ Done (merged to main) | `feature/secure-onboarding-portal` | 12 |
 | US02  | See the list of required documents | ✅ Done (merged to main) | `feature/document-checklist` | 11 |
-| US03  | Upload documents online | ✅ Implemented (awaiting merge approval) | `feature/document-upload` | 18 |
-| US04  | Secure document storage (R2) | ⏳ Next | — | — |
+| US03  | Upload documents online | ✅ Done (merged to main) | `feature/document-upload` | 18 |
+| US04  | Secure document storage (R2) | ✅ Done (merged to main) | `feature/secure-document-storage` | 12 |
 | US05  | Document status tracking | ⏳ Backlog | — | — |
 | US06–07 | HR onboarding creation + email invites | ⏳ Backlog | — | — |
 | US08–09 | Automated reminders + config | ⏳ Backlog | — | — |
@@ -219,6 +219,28 @@ feature branch per story.
 - `GET /api/v1/onboarding/document/{document_id}` — fetch upload context.
 - Frontend: inline file picker per document card, upload spinner,
   success/error messages, instant status + progress update after upload.
+
+### US04 — Secure Document Storage
+- `app/services/storage.py` (new):
+  - `storage_path_for()` — structured key `onboardings/{onboarding_id}/{document_id}.{ext}`
+  - `encrypt_bytes()` / `decrypt_bytes()` — AES-256-Fernet encryption at rest,
+    key derived from `SECRET_KEY` via HKDF-SHA256.
+  - `is_r2_configured()` — true only when all R2 credentials are present.
+  - `upload_to_r2()` — uploads as a **PRIVATE** object (ACL=private); no public
+    read. Access only via `generate_presigned_url()`.
+  - `upload_local()` — local filesystem fallback with the same structure.
+- `Document` model extended: `file_size`, `file_mime_type`, `encryption_algorithm`,
+  `file_url` columns.
+- `upload_file_to_storage()` now: encrypts → stores to R2 private bucket (or local
+  fallback) → persists the storage key + metadata linkage in the database.
+- `GET /api/v1/onboarding/storage/status` — reports backend, encryption status,
+  bucket, and storage structure.
+- Frontend: no UI change (storage is transparent), but upload responses now
+  include encryption + storage metadata.
+
+> Environment: without R2 credentials the app falls back to local encrypted
+> storage. Set `R2_*` vars in `.env` to switch to Cloudflare R2 (private bucket).
+> A dedicated `STORAGE_ENCRYPTION_KEY` can override the derived key.
 
 ### API endpoint summary
 

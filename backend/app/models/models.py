@@ -79,6 +79,10 @@ class Document(Base):
     status = Column(SAEnum(DocumentStatus), default=DocumentStatus.PENDING)
     file_key = Column(String(512), nullable=True)
     file_name = Column(String(255), nullable=True)
+    file_size = Column(String(32), nullable=True)
+    file_mime_type = Column(String(128), nullable=True)
+    encryption_algorithm = Column(String(64), nullable=True)
+    file_url = Column(String(1024), nullable=True)
     uploaded_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
