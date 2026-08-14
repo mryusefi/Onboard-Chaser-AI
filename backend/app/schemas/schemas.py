@@ -81,6 +81,10 @@ class DocumentResponse(BaseModel):
     status: str
     file_name: Optional[str]
     file_key: Optional[str] = None
+    file_size: Optional[str] = None
+    file_mime_type: Optional[str] = None
+    encryption_algorithm: Optional[str] = None
+    file_url: Optional[str] = None
     uploaded_at: Optional[datetime] = None
 
     class Config:

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.config import settings
 from app.schemas.schemas import (
     OnboardingResponse,
     OnboardingPortalResponse,
@@ -21,6 +22,7 @@ from app.services.document_service import (
     upload_file_to_storage,
     get_document_for_upload,
 )
+from app.services import storage
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
@@ -81,3 +83,16 @@ async def upload_document(
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/storage/status")
+def storage_status():
+    """Report current document storage configuration (US04)."""
+    return {
+        "r2_configured": storage.is_r2_configured(),
+        "encryption_enabled": True,
+        "encryption_algorithm": "AES-256-Fernet",
+        "storage_backend": "cloudflare_r2" if storage.is_r2_configured() else "local_filesystem",
+        "bucket": settings.R2_BUCKET_NAME or None,
+        "structure": "onboardings/{onboarding_id}/{document_id}.{ext}",
+    }
