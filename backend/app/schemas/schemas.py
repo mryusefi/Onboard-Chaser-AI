@@ -68,6 +68,9 @@ class OnboardingPortalResponse(BaseModel):
     candidate_email: str
     status: str
     documents: List[dict]
+    completion_percentage: int = 0
+    completed_documents: int = 0
+    total_documents: int = 0
 
 
 # --- Document Schemas ---

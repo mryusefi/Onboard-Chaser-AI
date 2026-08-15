@@ -17,6 +17,8 @@ from app.services.onboarding_service import (
     create_onboarding,
     generate_magic_link,
     validate_candidate_access,
+    compute_completion_percentage,
+    update_document_status,
 )
 from app.services.document_service import (
     upload_file_to_storage,
@@ -66,6 +68,37 @@ def get_document(document_id: str, db: Session = Depends(get_db)):
     """Get a single document requirement by ID."""
     try:
         return get_document_for_upload(db, document_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.patch("/document/{document_id}/status")
+def change_document_status(
+    document_id: str,
+    payload: dict,
+    db: Session = Depends(get_db),
+):
+    """Update a document's status (US05: Pending/Uploaded/Completed/Missing)."""
+    new_status = payload.get("status", "")
+    try:
+        result = update_document_status(db, document_id, new_status)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/progress/{onboarding_id}")
+def get_onboarding_progress(onboarding_id: str, db: Session = Depends(get_db)):
+    """Return document completion percentage for an onboarding (US05)."""
+    from uuid import UUID as _UUID
+
+    try:
+        oid = _UUID(onboarding_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid onboarding ID")
+    try:
+        progress = compute_completion_percentage(db, onboarding_id=oid)
+        return progress
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
