@@ -3,7 +3,13 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.models.models import Candidate, Onboarding, OnboardingStatus, Document
+from app.models.models import (
+    Candidate,
+    Onboarding,
+    OnboardingStatus,
+    Document,
+    DocumentStatus,
+)
 from app.core.security import create_magic_token, validate_magic_token
 from app.core.config import settings
 
@@ -144,10 +150,106 @@ def validate_candidate_access(db: Session, token: str) -> dict:
         for doc in onboarding.documents
     ]
 
+    progress = compute_completion_percentage(db, onboarding)
+
     return {
         "onboarding_id": str(onboarding.id),
         "candidate_name": candidate.full_name,
         "candidate_email": candidate.email,
         "status": onboarding.status.value,
         "documents": documents,
+        "completion_percentage": progress["completion_percentage"],
+        "completed_documents": progress["completed_documents"],
+        "total_documents": progress["total_documents"],
+    }
+
+
+def compute_completion_percentage(
+    db: Session, onboarding: Onboarding = None, onboarding_id=None
+) -> dict:
+    """
+    Compute onboarding document completion stats (US05).
+
+    A document counts as completed when its status is 'uploaded' or 'completed'.
+    Required documents are the baseline; optional documents do not penalize.
+    """
+    if onboarding is None:
+        if onboarding_id is None:
+            raise ValueError("onboarding or onboarding_id is required")
+        onboarding = db.query(Onboarding).filter(
+            Onboarding.id == onboarding_id
+        ).first()
+        if not onboarding:
+            raise ValueError("Onboarding not found")
+
+    docs = db.query(Document).filter(Document.onboarding_id == onboarding.id).all()
+    total = len(docs)
+    done = sum(
+        1 for d in docs if d.status in (DocumentStatus.UPLOADED, DocumentStatus.COMPLETED)
+    )
+    pending = sum(1 for d in docs if d.status == DocumentStatus.PENDING)
+    missing = sum(1 for d in docs if d.status == DocumentStatus.MISSING)
+    percent = round((done / total) * 100) if total else 0
+
+    # Auto-complete onboarding when all required documents are done
+    if total and done == total and onboarding.status != OnboardingStatus.COMPLETED:
+        onboarding.status = OnboardingStatus.COMPLETED
+        onboarding.completed_at = datetime.now(timezone.utc)
+        db.commit()
+
+    return {
+        "completion_percentage": percent,
+        "completed_documents": done,
+        "pending_documents": pending,
+        "missing_documents": missing,
+        "total_documents": total,
+    }
+
+
+def update_document_status(
+    db: Session, document_id: str, new_status: str
+) -> dict:
+    """
+    Update a document's status (US05).
+
+    Allowed transitions:
+      pending  -> uploaded | missing | completed
+      uploaded -> completed | missing
+      completed -> uploaded
+      missing  -> pending | uploaded
+    """
+    try:
+        doc_id = UUID(document_id)
+    except (ValueError, AttributeError):
+        raise ValueError("Invalid document ID")
+
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise ValueError("Document not found")
+
+    try:
+        target = DocumentStatus(new_status.lower())
+    except ValueError:
+        raise ValueError(
+            f"Invalid status '{new_status}'. Allowed: pending, uploaded, completed, missing"
+        )
+
+    doc.status = target
+    if target == DocumentStatus.COMPLETED:
+        doc.uploaded_at = doc.uploaded_at or datetime.now(timezone.utc)
+    db.commit()
+
+    # Recompute completion for the parent onboarding
+    onboarding = db.query(Onboarding).filter(
+        Onboarding.id == doc.onboarding_id
+    ).first()
+    progress = compute_completion_percentage(db, onboarding)
+
+    return {
+        "id": str(doc.id),
+        "name": doc.name,
+        "status": doc.status.value,
+        "completion_percentage": progress["completion_percentage"],
+        "completed_documents": progress["completed_documents"],
+        "total_documents": progress["total_documents"],
     }

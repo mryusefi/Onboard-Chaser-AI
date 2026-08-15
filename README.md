@@ -158,7 +158,7 @@ npm run dev
 ```bash
 cd backend
 TESTING=1 python -m pytest tests/ -v
-# Expected: 54 passed (US01: 12, US02: 11, US03: 18, US04: 12)
+# Expected: 68 passed (US01: 12, US02: 11, US03: 18, US04: 12, US05: 14)
 ```
 
 Tests use an in-memory SQLite database (StaticPool) via `tests/conftest.py`, so
@@ -178,7 +178,7 @@ feature branch per story.
 | US02  | See the list of required documents | ✅ Done (merged to main) | `feature/document-checklist` | 11 |
 | US03  | Upload documents online | ✅ Done (merged to main) | `feature/document-upload` | 18 |
 | US04  | Secure document storage (R2) | ✅ Done (merged to main) | `feature/secure-document-storage` | 12 |
-| US05  | Document status tracking | ⏳ Backlog | — | — |
+| US05  | Document status tracking | ✅ Done (merged to main) | `feature/document-status` | 14 |
 | US06–07 | HR onboarding creation + email invites | ⏳ Backlog | — | — |
 | US08–09 | Automated reminders + config | ⏳ Backlog | — | — |
 | US10–11 | HR dashboard + document detail | ⏳ Backlog | — | — |
@@ -241,6 +241,23 @@ feature branch per story.
 > Environment: without R2 credentials the app falls back to local encrypted
 > storage. Set `R2_*` vars in `.env` to switch to Cloudflare R2 (private bucket).
 > A dedicated `STORAGE_ENCRYPTION_KEY` can override the derived key.
+
+### US05 — Document Status Tracking
+- Statuses `pending | uploaded | completed | missing` enforced by the
+  `DocumentStatus` enum (already present from US01) and exposed everywhere.
+- `PATCH /api/v1/onboarding/document/{id}/status` — transition a document's
+  status (`{ "status": "completed" }`); validates the value and stores it.
+- `GET /api/v1/onboarding/progress/{onboarding_id}` — completion stats:
+  `completion_percentage`, `completed_documents`, `pending_documents`,
+  `missing_documents`, `total_documents`.
+- Uploading a file automatically sets the document to `uploaded` (US03).
+- When **all** documents reach `uploaded`/`completed`, the onboarding is
+  auto-marked `completed` with `completed_at` timestamp.
+- The candidate portal response now includes `completion_percentage`,
+  `completed_documents`, and `total_documents`; the frontend progress card
+  uses these server values and shows missing counts.
+- Frontend: progress card now displays "X of Y submitted · N missing" and
+  switches to green at 100%.
 
 ### API endpoint summary
 

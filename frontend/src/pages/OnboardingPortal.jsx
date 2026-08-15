@@ -276,11 +276,15 @@ function OnboardingPortal() {
     )
   }
 
-  const completedCount = portalData?.documents?.filter(
-    (d) => d.status === 'completed' || d.status === 'uploaded'
-  ).length || 0
-  const totalCount = portalData?.documents?.length || 0
-  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
+  const completedCount = portalData?.completed_documents ??
+    portalData?.documents?.filter(
+      (d) => d.status === 'completed' || d.status === 'uploaded'
+    ).length || 0
+  const totalCount = portalData?.total_documents ??
+    portalData?.documents?.length || 0
+  const progressPercent = portalData?.completion_percentage ??
+    (totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0)
+  const missingCount = portalData?.documents?.filter((d) => d.status === 'missing').length || 0
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -308,6 +312,7 @@ function OnboardingPortal() {
               <h2 className="text-base font-semibold text-slate-900">Onboarding Progress</h2>
               <p className="text-xs text-slate-500 mt-0.5">
                 {completedCount} of {totalCount} documents submitted
+                {missingCount > 0 ? ` \u00b7 ${missingCount} missing` : ''}
               </p>
             </div>
             <span className="text-2xl font-bold text-primary-600">{progressPercent}%</span>
