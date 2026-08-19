@@ -62,14 +62,20 @@ def storage_path_for(onboarding_id: str, document_id: str, ext: str) -> str:
     return f"onboardings/{onboarding_id}/{document_id}.{safe_ext}"
 
 
+_PLACEHOLDER_PREFIXES = ("your_", "change-", "placeholder", "xxx", "CHANGEME")
+
+
 def is_r2_configured() -> bool:
-    """True only when all required R2 credentials are present (private bucket)."""
-    return bool(
-        settings.R2_ACCESS_KEY_ID
-        and settings.R2_SECRET_ACCESS_KEY
-        and settings.R2_BUCKET_NAME
-        and settings.R2_ENDPOINT_URL
-    )
+    """True only when all required R2 credentials are REAL values (not placeholders)."""
+    for val in (
+        settings.R2_ACCESS_KEY_ID,
+        settings.R2_SECRET_ACCESS_KEY,
+        settings.R2_BUCKET_NAME,
+        settings.R2_ENDPOINT_URL,
+    ):
+        if not val or val.lower().startswith(_PLACEHOLDER_PREFIXES):
+            return False
+    return True
 
 
 def upload_to_r2(key: str, data: bytes, content_type: str) -> None:
