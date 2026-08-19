@@ -137,8 +137,8 @@ python -m venv .venv
 pip install -r requirements.txt
 
 # Point DATABASE_URL at your local Postgres, e.g.:
-#   export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/onboard_chaser"
-# (or put it in backend/.env)
+#   export DATABASE_URL="postgresql://postgres:***@localhost:5432/onboard_chaser"
+# (or put it in backend/.env — replace placeholder "your_*" values with real ones)
 
 uvicorn app.main:app --reload --port 8000
 # API: http://localhost:8000  |  Docs: http://localhost:8000/docs
@@ -148,9 +148,8 @@ cd frontend
 npm install
 npm run dev
 # App: http://localhost:5173
-# Vite proxies /api → http://backend:8000 (Docker DNS name).
-# For local dev without Docker, change vite.config.js proxy target to
-# http://localhost:8000 (or set VITE_API_URL).
+# Vite proxies /api → http://localhost:8000 (default for local dev).
+# For Docker, set VITE_API_URL=http://backend:8000 (handled by docker-compose.yml).
 ```
 
 ### Run the tests
