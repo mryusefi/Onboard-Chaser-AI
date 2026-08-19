@@ -276,12 +276,12 @@ function OnboardingPortal() {
     )
   }
 
-  const completedCount = portalData?.completed_documents ??
+  const completedCount = (portalData?.completed_documents ??
     portalData?.documents?.filter(
       (d) => d.status === 'completed' || d.status === 'uploaded'
-    ).length || 0
-  const totalCount = portalData?.total_documents ??
-    portalData?.documents?.length || 0
+    ).length) || 0
+  const totalCount = (portalData?.total_documents ??
+    portalData?.documents?.length) || 0
   const progressPercent = portalData?.completion_percentage ??
     (totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0)
   const missingCount = portalData?.documents?.filter((d) => d.status === 'missing').length || 0
