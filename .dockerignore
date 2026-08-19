@@ -1,0 +1,15 @@
+.git
+__pycache__
+*.pyc
+.pytest_cache
+uploads/
+.env
+.env.*
+*.egg-info
+node_modules/
+.vite/
+dist/
+build/
+.DS_Store
+.hermes-tmp.*
+README.md
