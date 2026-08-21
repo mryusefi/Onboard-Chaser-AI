@@ -47,36 +47,40 @@ receives automated reminders.
 
 ```
 MVP_Project/
-├── docker-compose.yml            # Full stack orchestration
+├── docker-compose.yml            # Full stack: db, redis, backend, frontend
 ├── .gitignore
+├── .dockerignore               # excludes .env, node_modules, __pycache__, uploads/
 ├── backend/
-│   ├── Dockerfile
+│   ├── Dockerfile              # python:3.11-slim-bookworm
 │   ├── requirements.txt
-│   ├── .env.example              # Copy to .env and fill in secrets
+│   ├── .env.example            # Copy to .env and fill in secrets
 │   ├── app/
-│   │   ├── main.py               # FastAPI app, CORS, router registration
+│   │   ├── main.py             # FastAPI app, CORS, router registration
 │   │   ├── core/
-│   │   │   ├── config.py         # Pydantic-settings (reads .env)
-│   │   │   ├── database.py       # SQLAlchemy engine/session
-│   │   │   └── security.py       # JWT + magic-link tokens, bcrypt
-│   │   ├── models/models.py      # SQLAlchemy ORM: User, Candidate, Onboarding, Document
-│   │   ├── schemas/schemas.py    # Pydantic request/response models
+│   │   │   ├── config.py       # Pydantic-settings (reads .env)
+│   │   │   ├── database.py     # SQLAlchemy engine/session
+│   │   │   └── security.py     # JWT + magic-link tokens, bcrypt
+│   │   ├── models/models.py    # SQLAlchemy ORM: User, Candidate, Onboarding, Document (with file metadata + statuses)
+│   │   ├── schemas/schemas.py  # Pydantic models: UserCreate, UserLogin, Token, OnboardingPortalResponse, DocumentResponse, etc.
 │   │   ├── api/
-│   │   │   ├── auth.py           # POST /auth/register, /auth/login
-│   │   │   ├── candidates.py     # POST /candidates/
-│   │   │   └── onboarding.py     # onboarding + document endpoints
+│   │   │   ├── auth.py         # POST /auth/register, POST /auth/login
+│   │   │   ├── candidates.py   # POST /candidates/
+│   │   │   └── onboarding.py   # onboarding, magic-link, portal, document, status, progress, storage endpoints
 │   │   └── services/
-│   │       ├── onboarding_service.py  # create onboarding, magic links, portal session
-│   │       └── document_service.py    # file validation, R2 upload, metadata
+│   │       ├── onboarding_service.py   # create onboarding, magic links, portal session, completion %, status transitions
+│   │       ├── document_service.py     # file validation, encrypted storage upload, metadata linkage
+│   │       └── storage.py              # R2/S3 upload, AES-256-Fernet encryption, private bucket, local fallback
 │   └── tests/
 │       ├── conftest.py           # shared in-memory SQLite test DB + fixtures
-│       ├── test_us01.py          # 12 tests — secure portal
+│       ├── test_us01.py          # 12 tests — secure portal + magic links
 │       ├── test_us02.py          # 11 tests — document checklist
-│       └── test_us03.py          # 18 tests — document upload
+│       ├── test_us03.py          # 18 tests — document upload + validation
+│       ├── test_us04.py          # 12 tests — secure storage (R2, encryption, structure, DB linkage)
+│       └── test_us05.py          # 14 tests — status tracking + completion percentage
 └── frontend/
     ├── Dockerfile
     ├── package.json
-    ├── vite.config.js            # dev server + /api proxy → backend:8000
+    ├── vite.config.js            # dev server + /api proxy → VITE_API_URL || localhost:8000
     ├── tailwind.config.js
     ├── postcss.config.js
     ├── index.html
@@ -86,7 +90,7 @@ MVP_Project/
         ├── index.css             # Tailwind + gradient helper
         └── pages/
             ├── HomePage.jsx              # Landing page
-            └── OnboardingPortal.jsx      # Checklist + upload UI
+            └── OnboardingPortal.jsx    # Checklist + upload UI + progress card (server-driven %)
 ```
 
 ---
@@ -113,6 +117,7 @@ docker compose up --build
 #    API docs:        http://localhost:8000/docs     (Swagger UI)
 #    Frontend:        http://localhost:5173
 #    DB:              postgres://postgres:postgres@localhost:5432/onboard_chaser
+#    (host port is 5433 to avoid conflicts with other local Postgres — see section 1 / compose)
 ```
 
 Stop with `Ctrl+C`, then `docker compose down`. To wipe the database volume:
@@ -139,6 +144,8 @@ pip install -r requirements.txt
 # Point DATABASE_URL at your local Postgres, e.g.:
 #   export DATABASE_URL="postgresql://postgres:***@localhost:5432/onboard_chaser"
 # (or put it in backend/.env — replace placeholder "your_*" values with real ones)
+# If using the bundled compose db, the host port is 5433 (not 5432):
+#   export DATABASE_URL="postgresql://postgres:***@localhost:5433/onboard_chaser"
 
 uvicorn app.main:app --reload --port 8000
 # API: http://localhost:8000  |  Docs: http://localhost:8000/docs
@@ -271,6 +278,9 @@ feature branch per story.
 | GET  | `/api/v1/onboarding/portal/{token}` | Validate token, open portal session |
 | GET  | `/api/v1/onboarding/document/{id}` | Document upload context |
 | POST | `/api/v1/onboarding/document/{id}/upload` | Upload file (PDF/image) |
+| PATCH | `/api/v1/onboarding/document/{id}/status` | Update document status (US05) |
+| GET  | `/api/v1/onboarding/progress/{onboarding_id}` | Completion % + counts (US05) |
+| GET  | `/api/v1/onboarding/storage/status` | Storage backend + encryption status (US04) |
 
 ---
 
