@@ -9,24 +9,102 @@ from app.models.models import (
     OnboardingStatus,
     Document,
     DocumentStatus,
+    User,
 )
 from app.core.security import create_magic_token, validate_magic_token
 from app.core.config import settings
 
+# Default required documents seeded for every new onboarding (US01/US03).
+DEFAULT_DOCUMENTS = [
+    {
+        "name": "Government ID",
+        "description": None,
+        "instructions": "Upload a clear, full-color photo or scan of your government-issued photo ID (passport, driver's license, or national ID card). All four corners must be visible and text must be legible.",
+        "accepted_formats": "PDF, JPG, PNG",
+        "required": True,
+    },
+    {
+        "name": "Proof of Address",
+        "description": None,
+        "instructions": "Upload a recent utility bill, bank statement, or official letter showing your current residential address. The document must be dated within the last 3 months.",
+        "accepted_formats": "PDF, JPG, PNG",
+        "required": True,
+    },
+    {
+        "name": "Tax Form (W-4)",
+        "description": None,
+        "instructions": "Download and complete the IRS W-4 form. Ensure all fields are filled, sign and date the form before uploading. If you are unsure about any section, contact HR before submitting.",
+        "accepted_formats": "PDF",
+        "required": True,
+    },
+    {
+        "name": "Signed Offer Letter",
+        "description": None,
+        "instructions": "Upload the signed copy of your employment offer letter. Both your signature and the employer's signature must be present. Scan or photograph the entire document.",
+        "accepted_formats": "PDF, JPG, PNG",
+        "required": True,
+    },
+]
 
-def create_onboarding(
-    db: Session, candidate_id: UUID, document_names: list[str] = None
-) -> Onboarding:
-    """Create an onboarding record for a candidate with required documents."""
+
+def create_candidate(db: Session, data) -> Candidate:
+    """
+    Create a new candidate record (US06).
+
+    Raises ValueError('duplicate_email') when a candidate with the same email
+    already exists -> routes translate this into HTTP 409.
+    """
+    existing = db.query(Candidate).filter(Candidate.email == data.email).first()
+    if existing:
+        raise ValueError("duplicate_email")
+
+    hr_user = db.query(User).first()  # placeholder until multi-HR support
+    if not hr_user:
+        raise ValueError("no_hr_user")
+
+    candidate = Candidate(
+        email=data.email,
+        full_name=data.full_name,
+        phone=data.phone,
+        position=data.position,
+        created_by=hr_user.id,
+    )
+    db.add(candidate)
+    db.commit()
+    db.refresh(candidate)
+    return candidate
+
+
+def create_onboarding_for_candidate(
+    db: Session,
+    candidate_id: UUID,
+    required_documents: list[dict] | None = None,
+) -> tuple[Onboarding, list[Document]]:
+    """
+    Create an onboarding process and seed its required documents (US06).
+
+    Document seeding policy:
+      - required_documents omitted/None -> seed the 4 default documents.
+      - required_documents provided     -> REPLACE the defaults entirely with
+        the given list (cleaner than appending: HR explicitly defines the
+        full checklist; appending could silently duplicate the defaults).
+
+    The new onboarding always starts as PENDING; it moves to IN_PROGRESS only
+    when the candidate first opens the portal (existing US01 behavior).
+    """
     candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
     if not candidate:
-        raise ValueError("Candidate not found")
+        raise ValueError("candidate_not_found")
 
     existing = db.query(Onboarding).filter(
         Onboarding.candidate_id == candidate_id
     ).first()
     if existing:
-        raise ValueError("Onboarding already exists for this candidate")
+        raise ValueError("onboarding_exists")
+
+    docs_to_seed = (
+        DEFAULT_DOCUMENTS if not required_documents else required_documents
+    )
 
     onboarding = Onboarding(
         candidate_id=candidate_id,
@@ -35,45 +113,44 @@ def create_onboarding(
     db.add(onboarding)
     db.flush()
 
-    if document_names is None:
-        default_docs = [
-            {
-                "name": "Government ID",
-                "instructions": "Upload a clear, full-color photo or scan of your government-issued photo ID (passport, driver's license, or national ID card). All four corners must be visible and text must be legible.",
-                "accepted_formats": "PDF, JPG, PNG",
-            },
-            {
-                "name": "Proof of Address",
-                "instructions": "Upload a recent utility bill, bank statement, or official letter showing your current residential address. The document must be dated within the last 3 months.",
-                "accepted_formats": "PDF, JPG, PNG",
-            },
-            {
-                "name": "Tax Form (W-4)",
-                "instructions": "Download and complete the IRS W-4 form. Ensure all fields are filled, sign and date the form before uploading. If you are unsure about any section, contact HR before submitting.",
-                "accepted_formats": "PDF",
-            },
-            {
-                "name": "Signed Offer Letter",
-                "instructions": "Upload the signed copy of your employment offer letter. Both your signature and the employer's signature must be present. Scan or photograph the entire document.",
-                "accepted_formats": "PDF, JPG, PNG",
-            },
-        ]
-    else:
-        default_docs = [{"name": n, "instructions": None, "accepted_formats": "PDF, JPG, PNG"} for n in document_names]
-
-    for doc_data in default_docs:
+    created_docs: list[Document] = []
+    for doc_data in docs_to_seed:
         doc = Document(
             onboarding_id=onboarding.id,
             name=doc_data["name"],
+            description=doc_data.get("description"),
             instructions=doc_data.get("instructions"),
-            accepted_formats=doc_data.get("accepted_formats"),
-            required=True,
+            accepted_formats=doc_data.get("accepted_formats") or "PDF, JPG, PNG",
+            required=bool(doc_data.get("required", True)),
+            status=DocumentStatus.PENDING,
         )
         db.add(doc)
+        created_docs.append(doc)
 
     db.commit()
     db.refresh(onboarding)
-    return onboarding
+    return onboarding, created_docs
+
+
+def create_full_onboarding(db: Session, payload) -> dict:
+    """
+    Convenience flow (US06): create the candidate AND the onboarding in one
+    transactional service call. Used by POST /onboarding/create-full.
+    """
+    candidate = create_candidate(db, payload.candidate)
+    try:
+        onboarding, documents = create_onboarding_for_candidate(
+            db, candidate.id,
+            [d.model_dump() for d in payload.required_documents]
+            if payload.required_documents else None,
+        )
+    except ValueError:
+        # Roll back the just-created candidate so we don't leave orphans.
+        db.rollback()
+        db.delete(candidate)
+        db.commit()
+        raise
+    return candidate, onboarding, documents
 
 
 def generate_magic_link(db: Session, candidate_id: UUID) -> dict:
