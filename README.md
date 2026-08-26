@@ -164,7 +164,7 @@ npm run dev
 ```bash
 cd backend
 TESTING=1 python -m pytest tests/ -v
-# Expected: 68 passed (US01: 12, US02: 11, US03: 18, US04: 12, US05: 14)
+# Expected: 85 passed (US01: 12, US02: 11, US03: 18, US04: 12, US05: 14, US06: 17)
 ```
 
 Tests use an in-memory SQLite database (StaticPool) via `tests/conftest.py`, so
@@ -185,7 +185,8 @@ feature branch per story.
 | US03  | Upload documents online | ✅ Done (merged to main) | `feature/document-upload` | 18 |
 | US04  | Secure document storage (R2) | ✅ Done (merged to main) | `feature/secure-document-storage` | 12 |
 | US05  | Document status tracking | ✅ Done (merged to main) | `feature/document-status` | 14 |
-| US06–07 | HR onboarding creation + email invites | ⏳ Backlog | — | — |
+| US06  | HR creates a new onboarding process | ✅ Done (feature branch, pending merge) | `feature/hr-onboarding-management` | 17 |
+| US07  | Invitation email via Resend | ⏳ Backlog | — | — |
 | US08–09 | Automated reminders + config | ⏳ Backlog | — | — |
 | US10–11 | HR dashboard + document detail | ⏳ Backlog | — | — |
 | US12  | AI document verification | 🚫 Post-MVP (explicitly out of scope) | — | — |
@@ -265,6 +266,31 @@ feature branch per story.
 - Frontend: progress card now displays "X of Y submitted · N missing" and
   switches to green at 100%.
 
+### US06 — HR Onboarding Creation
+- `get_current_user` dependency (core/security.py): OAuth2 Bearer JWT auth;
+  returns the HR user or raises 401. Applied to all candidate/onboarding
+  creation routes.
+- `POST /api/v1/candidates/` — create a candidate (`full_name`, `email`,
+  `phone`, `position`); requires HR JWT; duplicate email → **409**.
+- `POST /api/v1/onboarding/{candidate_id}` — create an onboarding for an
+  existing candidate; requires HR JWT; optional JSON body with custom
+  `required_documents`; unknown candidate → **404**, duplicate onboarding →
+  **409**.
+- `POST /api/v1/onboarding/create-full` — combined convenience endpoint:
+  creates candidate + onboarding (+ documents) in one request; requires HR
+  JWT; returns `candidate`, `onboarding`, and seeded `documents`.
+- Document seeding policy (documented in `onboarding_service.py`):
+  - `required_documents` omitted → the 4 default documents are seeded.
+  - `required_documents` provided → they **replace** the defaults entirely
+    (HR defines the full checklist explicitly — appending could silently
+    duplicate defaults). Each item supports `name`, `description`,
+    `instructions`, `accepted_formats`, `required`.
+- New onboardings always start as `pending` (unchanged US01 behavior).
+- Frontend: new page `src/pages/CreateOnboardingPage.jsx` at route
+  `/admin/onboarding/new` — candidate info form, checkbox list of the 4
+  default docs plus add/remove custom document builder, loading/success/error
+  states, and a post-submit summary view of the created onboarding.
+
 ### API endpoint summary
 
 | Method | Path | Purpose |
@@ -272,8 +298,9 @@ feature branch per story.
 | GET  | `/health` | Health check |
 | POST | `/api/v1/auth/register` | Register HR user |
 | POST | `/api/v1/auth/login` | HR login → JWT |
-| POST | `/api/v1/candidates/` | Create candidate (US06 foundation) |
-| POST | `/api/v1/onboarding/{candidate_id}` | Create onboarding + default docs |
+| POST | `/api/v1/candidates/` | Create candidate — **HR auth**, dup email → 409 |
+| POST | `/api/v1/onboarding/create-full` | Combined create candidate + onboarding — **HR auth** (US06) |
+| POST | `/api/v1/onboarding/{candidate_id}` | Create onboarding (+ optional custom docs) — **HR auth** (US06) |
 | POST | `/api/v1/onboarding/magic-link` | Generate secure portal link |
 | GET  | `/api/v1/onboarding/portal/{token}` | Validate token, open portal session |
 | GET  | `/api/v1/onboarding/document/{id}` | Document upload context |
