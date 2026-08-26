@@ -139,3 +139,12 @@ class CandidateOnboardingResponse(BaseModel):
     candidate: CandidateResponse
     onboarding: OnboardingResponse
     documents: List[DocumentResponse]
+
+
+class FullOnboardingCreate(BaseModel):
+    """
+    Payload for the combined convenience endpoint (US06): creates the
+    candidate and their onboarding in a single request.
+    """
+    candidate: CandidateCreate
+    required_documents: Optional[List[RequiredDocumentCreate]] = None
