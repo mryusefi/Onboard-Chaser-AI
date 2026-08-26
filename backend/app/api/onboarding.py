@@ -54,43 +54,6 @@ def access_portal(token: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=403, detail=str(e))
 
 
-@router.post("/{candidate_id}", response_model=OnboardingResponse)
-def start_onboarding(
-    candidate_id: str,
-    body: OnboardingCreate | None = None,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
-    """
-    Create an onboarding process for an existing candidate (US06).
-
-    Requires HR authentication. Optional JSON body may carry a custom
-    required_documents list; when omitted the 4 default documents are seeded.
-    """
-    try:
-        cid = UUID(candidate_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid candidate ID")
-
-    custom_docs = (
-        [d.model_dump() for d in body.required_documents]
-        if body and body.required_documents
-        else None
-    )
-    try:
-        onboarding, _ = create_onboarding_for_candidate(db, cid, custom_docs)
-        return onboarding
-    except ValueError as e:
-        msg = str(e)
-        if msg == "candidate_not_found":
-            raise HTTPException(status_code=404, detail="Candidate not found")
-        if msg == "onboarding_exists":
-            raise HTTPException(
-                status_code=409, detail="Onboarding already exists for this candidate"
-            )
-        raise HTTPException(status_code=400, detail=msg)
-
-
 @router.post("/create-full", response_model=CandidateOnboardingResponse)
 def create_full_onboarding_endpoint(
     body: FullOnboardingCreate,
@@ -127,6 +90,44 @@ def create_full_onboarding_endpoint(
         onboarding=onboarding,
         documents=docs,
     )
+
+
+
+@router.post("/{candidate_id}", response_model=OnboardingResponse)
+def start_onboarding(
+    candidate_id: str,
+    body: OnboardingCreate | None = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Create an onboarding process for an existing candidate (US06).
+
+    Requires HR authentication. Optional JSON body may carry a custom
+    required_documents list; when omitted the 4 default documents are seeded.
+    """
+    try:
+        cid = UUID(candidate_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid candidate ID")
+
+    custom_docs = (
+        [d.model_dump() for d in body.required_documents]
+        if body and body.required_documents
+        else None
+    )
+    try:
+        onboarding, _ = create_onboarding_for_candidate(db, cid, custom_docs)
+        return onboarding
+    except ValueError as e:
+        msg = str(e)
+        if msg == "candidate_not_found":
+            raise HTTPException(status_code=404, detail="Candidate not found")
+        if msg == "onboarding_exists":
+            raise HTTPException(
+                status_code=409, detail="Onboarding already exists for this candidate"
+            )
+        raise HTTPException(status_code=400, detail=msg)
 
 
 @router.get("/document/{document_id}", response_model=DocumentResponse)
