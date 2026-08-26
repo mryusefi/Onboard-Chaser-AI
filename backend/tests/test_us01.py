@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.models.models import Candidate, Onboarding, User, Document
 from app.core.security import pwd_context, validate_magic_token, create_magic_token
-from tests.conftest import TestingSession
+from tests.conftest import TestingSession, make_hr_headers
 
 client = TestClient(app)
 
@@ -53,27 +53,29 @@ class TestCreateOnboardingPage:
     """Task: Create candidate onboarding page (API endpoint)."""
 
     def test_start_onboarding_creates_record(self, candidate):
-        resp = client.post(f"/api/v1/onboarding/{candidate.id}")
+        resp = client.post(f"/api/v1/onboarding/{candidate.id}", headers=make_hr_headers())
         assert resp.status_code == 200
         data = resp.json()
         assert data["candidate_id"] == str(candidate.id)
         assert data["status"] == "pending"
 
     def test_start_onboarding_invalid_id(self):
-        resp = client.post("/api/v1/onboarding/not-a-uuid")
+        resp = client.post(
+            "/api/v1/onboarding/not-a-uuid", headers=make_hr_headers()
+        )
         assert resp.status_code == 400
 
     def test_duplicate_onboarding_rejected(self, candidate):
-        client.post(f"/api/v1/onboarding/{candidate.id}")
-        resp = client.post(f"/api/v1/onboarding/{candidate.id}")
-        assert resp.status_code == 400
+        client.post(f"/api/v1/onboarding/{candidate.id}", headers=make_hr_headers())
+        resp = client.post(f"/api/v1/onboarding/{candidate.id}", headers=make_hr_headers())
+        assert resp.status_code == 409
 
 
 class TestCreateUniqueURL:
     """Task: Create unique onboarding URL."""
 
     def test_magic_link_generation(self, candidate):
-        client.post(f"/api/v1/onboarding/{candidate.id}")
+        client.post(f"/api/v1/onboarding/{candidate.id}", headers=make_hr_headers())
         resp = client.post(
             "/api/v1/onboarding/magic-link",
             json={"candidate_id": str(candidate.id)},
@@ -129,7 +131,7 @@ class TestValidateCandidateAccess:
     """Task: Validate candidate access request."""
 
     def test_valid_token_accesses_portal(self, candidate):
-        client.post(f"/api/v1/onboarding/{candidate.id}")
+        client.post(f"/api/v1/onboarding/{candidate.id}", headers=make_hr_headers())
         resp = client.post(
             "/api/v1/onboarding/magic-link",
             json={"candidate_id": str(candidate.id)},
@@ -153,7 +155,7 @@ class TestBasicOnboardingSession:
     """Task: Create basic onboarding session."""
 
     def test_session_marks_started(self, candidate, db):
-        client.post(f"/api/v1/onboarding/{candidate.id}")
+        client.post(f"/api/v1/onboarding/{candidate.id}", headers=make_hr_headers())
         resp = client.post(
             "/api/v1/onboarding/magic-link",
             json={"candidate_id": str(candidate.id)},
@@ -169,7 +171,7 @@ class TestBasicOnboardingSession:
         assert onboarding.started_at is not None
 
     def test_default_documents_created(self, candidate, db):
-        client.post(f"/api/v1/onboarding/{candidate.id}")
+        client.post(f"/api/v1/onboarding/{candidate.id}", headers=make_hr_headers())
         onboarding = db.query(Onboarding).filter(
             Onboarding.candidate_id == candidate.id
         ).first()

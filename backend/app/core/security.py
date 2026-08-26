@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import uuid
+from uuid import UUID
 
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
@@ -72,6 +73,9 @@ def get_current_user(
     Raises 401 when the token is missing/invalid or the user no longer exists.
     """
     credentials_exception = HTTPException(status_code=401, detail="Not authenticated")
+
+    if not token:
+        raise credentials_exception
 
     payload = decode_access_token(token)
     if not payload:

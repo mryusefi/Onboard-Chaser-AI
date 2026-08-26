@@ -14,7 +14,7 @@ from app.services.onboarding_service import (
     compute_completion_percentage,
     update_document_status,
 )
-from tests.conftest import TestingSession
+from tests.conftest import TestingSession, make_hr_headers
 
 client = TestClient(app)
 
@@ -26,7 +26,7 @@ def onboarding_with_docs(db):
     db.add(user); db.commit(); db.refresh(user)
     cand = Candidate(email="c5@t.com", full_name="C5", created_by=user.id)
     db.add(cand); db.commit(); db.refresh(cand)
-    client.post(f"/api/v1/onboarding/{cand.id}")
+    client.post(f"/api/v1/onboarding/{cand.id}", headers=make_hr_headers())
     onb = db.query(Onboarding).filter(Onboarding.candidate_id == cand.id).first()
     docs = db.query(Document).filter(Document.onboarding_id == onb.id).all()
     doc_ids = [str(d.id) for d in docs]
