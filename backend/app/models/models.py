@@ -24,6 +24,15 @@ class DocumentStatus(str, enum.Enum):
     MISSING = "missing"
 
 
+class InvitationEmailStatus(str, enum.Enum):
+    """Delivery tracking for the candidate invitation email (US07)."""
+    NOT_SENT = "not_sent"
+    SENT = "sent"
+    FAILED = "failed"
+    DELIVERED = "delivered"
+    BOUNCED = "bounced"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -61,6 +70,13 @@ class Onboarding(Base):
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    # US07: invitation email delivery tracking
+    invitation_sent_at = Column(DateTime(timezone=True), nullable=True)
+    invitation_email_status = Column(
+        SAEnum(InvitationEmailStatus), default=InvitationEmailStatus.NOT_SENT
+    )
+    invitation_last_error = Column(Text, nullable=True)
 
     candidate = relationship("Candidate", back_populates="onboarding")
     documents = relationship("Document", back_populates="onboarding")
