@@ -391,12 +391,7 @@ Conventional-commit prefixes used: `feat:`, `fix:`, `chore:`.
 
 ## 9. Roadmap (next stories)
 
-1. **US04 — Secure document storage (R2):** private bucket config, folder
-   structure, server-side encryption, DB↔storage linkage.
-2. **US05 — Document status tracking:** completed/missing transitions,
-   completion percentage.
-3. **US06 — HR creates onboarding:** candidate info form + required docs picker.
-4. **US07 — Invitation email via Resend** with the secure portal link.
-5. **US08–09 — Automated reminders (Celery + Redis)** and reminder config.
-6. **US10–11 — HR dashboard** (progress list, document preview/download).
-7. **US12 — AI document verification:** Post-MVP, out of scope for now.
+1. **US07 — Invitation email via Resend** with the secure portal link.
+2. **US08–09 — Automated reminders (Celery + Redis)** and reminder config.
+3. **US10–11 — HR dashboard** (progress list, document preview/download).
+4. **US12 — AI document verification:** Post-MVP, out of scope for now.
