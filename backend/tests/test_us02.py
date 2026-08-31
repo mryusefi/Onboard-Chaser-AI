@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.models.models import User, Candidate
 from app.core.security import pwd_context
+from tests.conftest import make_hr_headers
 
 client = TestClient(app)
 
@@ -19,7 +20,7 @@ def hr_and_candidate(db):
     cand = Candidate(email="c@t.com", full_name="Test Candidate", created_by=user.id)
     db.add(cand); db.commit(); db.refresh(cand)
     # Create onboarding + magic link + portal access
-    client.post(f"/api/v1/onboarding/{cand.id}")
+    client.post(f"/api/v1/onboarding/{cand.id}", headers=make_hr_headers())
     resp = client.post("/api/v1/onboarding/magic-link", json={"candidate_id": str(cand.id)})
     token = resp.json()["magic_link"].split("/onboard/")[1]
     client.get(f"/api/v1/onboarding/portal/{token}")
@@ -115,7 +116,7 @@ class TestCustomDocumentNames:
         cand2 = Candidate(email="c2@t.com", full_name="C2", created_by=user.id)
         db.add(cand2); db.commit(); db.refresh(cand2)
 
-        resp = client.post(f"/api/v1/onboarding/{cand2.id}")
+        resp = client.post(f"/api/v1/onboarding/{cand2.id}", headers=make_hr_headers())
         assert resp.status_code == 200
 
         resp = client.post("/api/v1/onboarding/magic-link", json={"candidate_id": str(cand2.id)})

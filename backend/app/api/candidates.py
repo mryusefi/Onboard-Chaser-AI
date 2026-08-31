@@ -1,37 +1,30 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models.models import User, Candidate, Onboarding, Document
+from app.core.security import get_current_user
+from app.models.models import Candidate
 from app.schemas.schemas import CandidateCreate, CandidateResponse
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
 
 
 @router.post("/", response_model=CandidateResponse)
-def create_candidate(body: CandidateCreate, db: Session = Depends(get_db)):
-    """Create a new candidate record."""
-    from app.core.security import create_access_token
+def create_candidate(
+    body: CandidateCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Create a new candidate record (US06). Requires HR authentication.
 
-    existing = db.query(Candidate).filter(Candidate.email == body.email).first()
-    if existing:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail="Candidate already exists")
+    Returns 409 when a candidate with the same email already exists.
+    """
+    from app.services.onboarding_service import create_candidate as _create_candidate
 
-    # For now, use a placeholder creator. In production, extract from JWT.
-    placeholder_hr = db.query(User).first()
-    if not placeholder_hr:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail="No HR user exists yet. Register first.")
-
-    candidate = Candidate(
-        email=body.email,
-        full_name=body.full_name,
-        phone=body.phone,
-        position=body.position,
-        created_by=placeholder_hr.id,
-    )
-    db.add(candidate)
-    db.commit()
-    db.refresh(candidate)
-    return candidate
+    try:
+        return _create_candidate(db, body)
+    except ValueError as e:
+        if str(e) == "duplicate_email":
+            raise HTTPException(status_code=409, detail="Candidate already exists")
+        raise HTTPException(status_code=400, detail=str(e))

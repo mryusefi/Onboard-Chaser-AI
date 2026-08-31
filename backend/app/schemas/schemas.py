@@ -107,3 +107,44 @@ class MagicLinkRequest(BaseModel):
 class MagicLinkResponse(BaseModel):
     magic_link: str
     expires_at: datetime
+
+
+# --- US06: HR onboarding creation ---
+class RequiredDocumentCreate(BaseModel):
+    """A single custom required document to seed into a new onboarding."""
+    name: str
+    description: Optional[str] = None
+    instructions: Optional[str] = None
+    accepted_formats: Optional[str] = "PDF, JPG, PNG"
+    required: bool = True
+
+
+class OnboardingCreate(BaseModel):
+    """
+    Payload for creating an onboarding process for an existing candidate.
+
+    required_documents can be omitted -> the 4 default documents are seeded.
+    When provided, these custom documents REPLACE the defaults (documented
+    decision in onboarding_service.create_onboarding_for_candidate).
+    """
+    candidate_id: UUID
+    required_documents: Optional[List[RequiredDocumentCreate]] = None
+
+
+class CandidateOnboardingResponse(BaseModel):
+    """
+    Combined response for the convenience endpoint: candidate + onboarding +
+    the list of seeded documents.
+    """
+    candidate: CandidateResponse
+    onboarding: OnboardingResponse
+    documents: List[DocumentResponse]
+
+
+class FullOnboardingCreate(BaseModel):
+    """
+    Payload for the combined convenience endpoint (US06): creates the
+    candidate and their onboarding in a single request.
+    """
+    candidate: CandidateCreate
+    required_documents: Optional[List[RequiredDocumentCreate]] = None

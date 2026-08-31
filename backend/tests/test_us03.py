@@ -10,7 +10,7 @@ from app.main import app
 from app.models.models import User, Candidate, Document
 from app.core.security import pwd_context
 from app.services.document_service import validate_file, upload_file_to_storage
-from tests.conftest import TestingSession
+from tests.conftest import TestingSession, make_hr_headers
 
 client = TestClient(app)
 
@@ -23,7 +23,7 @@ def hr_and_candidate_with_docs(db):
     cand = Candidate(email="c3@t.com", full_name="C3", created_by=user.id)
     db.add(cand); db.commit(); db.refresh(cand)
     # Create onboarding
-    client.post(f"/api/v1/onboarding/{cand.id}")
+    client.post(f"/api/v1/onboarding/{cand.id}", headers=make_hr_headers())
     # Magic link
     resp = client.post("/api/v1/onboarding/magic-link", json={"candidate_id": str(cand.id)})
     token = resp.json()["magic_link"].split("/onboard/")[1]

@@ -1,15 +1,23 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import uuid
+from uuid import UUID
 
+from fastapi import Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.database import get_db
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 ALGORITHM = "HS256"
+
+# Used to extract the Bearer token from HR-facing requests.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_PREFIX}/auth/login", auto_error=False)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -53,3 +61,33 @@ def validate_magic_token(token: str) -> Optional[dict]:
         return payload
     except JWTError:
         return None
+
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+) -> "User":
+    """
+    HR authentication dependency (US06).
+
+    Extracts the Bearer token, decodes it and loads the corresponding User.
+    Raises 401 when the token is missing/invalid or the user no longer exists.
+    """
+    credentials_exception = HTTPException(status_code=401, detail="Not authenticated")
+
+    if not token:
+        raise credentials_exception
+
+    payload = decode_access_token(token)
+    if not payload:
+        raise credentials_exception
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise credentials_exception
+
+    from app.models.models import User
+
+    user = db.query(User).filter(User.id == UUID(user_id)).first()
+    if not user:
+        raise credentials_exception
+    return user

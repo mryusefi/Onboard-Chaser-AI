@@ -6,15 +6,20 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.config import settings
+from app.core.security import get_current_user
 from app.schemas.schemas import (
     OnboardingResponse,
     OnboardingPortalResponse,
+    OnboardingCreate,
+    FullOnboardingCreate,
+    CandidateOnboardingResponse,
     MagicLinkRequest,
     MagicLinkResponse,
     DocumentResponse,
 )
 from app.services.onboarding_service import (
-    create_onboarding,
+    create_onboarding_for_candidate,
+    create_full_onboarding,
     generate_magic_link,
     validate_candidate_access,
     compute_completion_percentage,
@@ -49,18 +54,80 @@ def access_portal(token: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=403, detail=str(e))
 
 
+@router.post("/create-full", response_model=CandidateOnboardingResponse)
+def create_full_onboarding_endpoint(
+    body: FullOnboardingCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Convenience endpoint (US06): create candidate + onboarding (+ seeded
+    documents) in one request. Requires HR authentication.
+    """
+    from app.models.models import Candidate as CandidateModel
+
+    try:
+        candidate, onboarding, documents = create_full_onboarding(db, body)
+    except ValueError as e:
+        msg = str(e)
+        if msg == "duplicate_email":
+            raise HTTPException(status_code=409, detail="Candidate already exists")
+        if msg == "onboarding_exists":
+            raise HTTPException(
+                status_code=409, detail="Onboarding already exists for this candidate"
+            )
+        if msg == "no_hr_user":
+            raise HTTPException(status_code=400, detail="No HR user exists yet. Register first.")
+        raise HTTPException(status_code=400, detail=msg)
+
+    # Re-query for fresh ORM state to satisfy from_attributes serialization.
+    cand = db.query(CandidateModel).filter(CandidateModel.id == candidate.id).first()
+    docs = [
+        DocumentResponse.model_validate(d) for d in documents
+    ]
+    return CandidateOnboardingResponse(
+        candidate=cand,
+        onboarding=onboarding,
+        documents=docs,
+    )
+
+
+
 @router.post("/{candidate_id}", response_model=OnboardingResponse)
-def start_onboarding(candidate_id: str, db: Session = Depends(get_db)):
-    """Create an onboarding process for a candidate."""
+def start_onboarding(
+    candidate_id: str,
+    body: OnboardingCreate | None = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Create an onboarding process for an existing candidate (US06).
+
+    Requires HR authentication. Optional JSON body may carry a custom
+    required_documents list; when omitted the 4 default documents are seeded.
+    """
     try:
         cid = UUID(candidate_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid candidate ID")
+
+    custom_docs = (
+        [d.model_dump() for d in body.required_documents]
+        if body and body.required_documents
+        else None
+    )
     try:
-        onboarding = create_onboarding(db, cid)
+        onboarding, _ = create_onboarding_for_candidate(db, cid, custom_docs)
         return onboarding
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        msg = str(e)
+        if msg == "candidate_not_found":
+            raise HTTPException(status_code=404, detail="Candidate not found")
+        if msg == "onboarding_exists":
+            raise HTTPException(
+                status_code=409, detail="Onboarding already exists for this candidate"
+            )
+        raise HTTPException(status_code=400, detail=msg)
 
 
 @router.get("/document/{document_id}", response_model=DocumentResponse)

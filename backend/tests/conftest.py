@@ -1,5 +1,7 @@
 """Shared test fixtures for all US test suites."""
 import os
+import uuid
+
 os.environ["TESTING"] = "1"
 
 import pytest
@@ -48,3 +50,43 @@ def db():
         yield session
     finally:
         session.close()
+
+
+@pytest.fixture
+def hr_headers(client=None):
+    """
+    Register + login an HR user via the API and return auth headers (US06).
+
+    Usage: pass as `headers=hr_headers` on HR-facing requests.
+    """
+    from fastapi.testclient import TestClient
+
+    c = client or TestClient(app)
+    email = "hr_admin@test.com"
+    c.post(
+        "/api/v1/auth/register",
+        json={"email": email, "full_name": "HR Admin", "password": "secret123"},
+    )
+    resp = c.post(
+        "/api/v1/auth/login",
+        json={"email": email, "password": "secret123"},
+    )
+    token = resp.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+def make_hr_headers() -> dict:
+    """Non-fixture variant for module-level use inside other fixtures."""
+    from fastapi.testclient import TestClient
+
+    c = TestClient(app)
+    email = f"hr_{uuid.uuid4().hex[:8]}@test.com"
+    c.post(
+        "/api/v1/auth/register",
+        json={"email": email, "full_name": "HR Admin", "password": "secret123"},
+    )
+    resp = c.post(
+        "/api/v1/auth/login", json={"email": email, "password": "secret123"}
+    )
+    token = resp.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}

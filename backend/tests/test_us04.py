@@ -12,7 +12,7 @@ from app.models.models import User, Candidate, Document, Onboarding
 from app.core.security import pwd_context
 from app.services import storage
 from app.services.document_service import upload_file_to_storage
-from tests.conftest import TestingSession
+from tests.conftest import TestingSession, make_hr_headers
 
 client = TestClient(app)
 
@@ -22,7 +22,7 @@ def make_onboarding(db):
     db.add(user); db.commit(); db.refresh(user)
     cand = Candidate(email="c4@t.com", full_name="C4", created_by=user.id)
     db.add(cand); db.commit(); db.refresh(cand)
-    client.post(f"/api/v1/onboarding/{cand.id}")
+    client.post(f"/api/v1/onboarding/{cand.id}", headers=make_hr_headers())
     onb = db.query(Onboarding).filter(Onboarding.candidate_id == cand.id).first()
     return onb
 
