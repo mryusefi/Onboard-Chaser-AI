@@ -164,7 +164,7 @@ npm run dev
 ```bash
 cd backend
 TESTING=1 python -m pytest tests/ -v
-# Expected: 85 passed (US01: 12, US02: 11, US03: 18, US04: 12, US05: 14, US06: 17)
+# Expected: 91 passed (US01: 12, US02: 11, US03: 18, US04: 12, US05: 14, US06: 17, US07: 6)
 ```
 
 Tests use an in-memory SQLite database (StaticPool) via `tests/conftest.py`, so
@@ -186,7 +186,7 @@ feature branch per story.
 | US04  | Secure document storage (R2) | ✅ Done (merged to main) | `feature/secure-document-storage` | 12 |
 | US05  | Document status tracking | ✅ Done (merged to main) | `feature/document-status` | 14 |
 | US06  | HR creates a new onboarding process | ✅ Done (feature branch, pending merge) | `feature/hr-onboarding-management` | 17 |
-| US07  | Invitation email via Resend | ⏳ Backlog | — | — |
+| US07  | Invitation email via Resend | ✅ Done (feature branch, pending merge) | `feature/invitation-email` | 6 |
 | US08–09 | Automated reminders + config | ⏳ Backlog | — | — |
 | US10–11 | HR dashboard + document detail | ⏳ Backlog | — | — |
 | US12  | AI document verification | 🚫 Post-MVP (explicitly out of scope) | — | — |
@@ -291,6 +291,40 @@ feature branch per story.
   default docs plus add/remove custom document builder, loading/success/error
   states, and a post-submit summary view of the created onboarding.
 
+### US07 — Invitation Email
+- `app/services/email_service.py` (new):
+  - Inline Jinja2 template (HTML + plain-text fallback) — no external template
+    files. Includes candidate name, company/position context, the secure
+    portal link (`FRONTEND_URL` + magic token), an expiry notice based on
+    `MAGIC_TOKEN_EXPIRE_HOURS`, and the list of documents to prepare.
+  - `is_email_configured()` — mirrors the R2 fallback pattern in storage.py:
+    when `RESEND_API_KEY` is absent the send is skipped with a logged warning
+    and status `not_sent` (no crash).
+  - `send_invitation()` — renders the email, sends via the Resend SDK, and
+    returns a typed result (`status`, `sent_at`, `last_error`, `portal_url`,
+    `expiry_hours`). Provider errors (invalid recipient, rate limit, API
+    failure) are caught and recorded as `failed` with `last_error` — the API
+    responds 200 with `status: failed` instead of a raw 500.
+  - Reuses a still-valid unused magic token from US01 instead of regenerating.
+- `InvitationEmailStatus` enum (models.py): `not_sent | sent | failed |
+  delivered | bounced` — defined consistently with `DocumentStatus`.
+- `Onboarding` model extended: `invitation_sent_at`, `invitation_email_status`,
+  `invitation_last_error`.
+- `POST /api/v1/onboarding/{onboarding_id}/send-invitation` (HR auth):
+  generates a magic link if missing/expired/used (or reuses a valid unused
+  one), sends the email, updates the tracking fields, and returns delivery
+  status + portal link + expiry for HR reference.
+- `GET /api/v1/onboarding/{onboarding_id}/invitation-status` (HR auth):
+  returns current tracking fields (status, sent_at, last_error) without
+  resending — for polling/display.
+- Webhook: not implemented in this MVP iteration. `delivered`/`bounced`
+  tracking requires configuring a webhook in Resend's dashboard pointing at a
+  future `POST /api/v1/webhooks/resend` endpoint; until then status rests at
+  `sent`/`failed`.
+- Frontend: "Send Invitation" button on the onboarding summary view
+  (CreateOnboardingPage) with loading/success/error states, invitation status
+  display, and the portal link shown for manual copy/share fallback.
+
 ### API endpoint summary
 
 | Method | Path | Purpose |
@@ -301,6 +335,8 @@ feature branch per story.
 | POST | `/api/v1/candidates/` | Create candidate — **HR auth**, dup email → 409 |
 | POST | `/api/v1/onboarding/create-full` | Combined create candidate + onboarding — **HR auth** (US06) |
 | POST | `/api/v1/onboarding/{candidate_id}` | Create onboarding (+ optional custom docs) — **HR auth** (US06) |
+| POST | `/api/v1/onboarding/{onboarding_id}/send-invitation` | Send invitation email (Resend) — **HR auth** (US07) |
+| GET  | `/api/v1/onboarding/{onboarding_id}/invitation-status` | Invitation delivery status — **HR auth** (US07) |
 | POST | `/api/v1/onboarding/magic-link` | Generate secure portal link |
 | GET  | `/api/v1/onboarding/portal/{token}` | Validate token, open portal session |
 | GET  | `/api/v1/onboarding/document/{id}` | Document upload context |
@@ -391,7 +427,6 @@ Conventional-commit prefixes used: `feat:`, `fix:`, `chore:`.
 
 ## 9. Roadmap (next stories)
 
-1. **US07 — Invitation email via Resend** with the secure portal link.
-2. **US08–09 — Automated reminders (Celery + Redis)** and reminder config.
-3. **US10–11 — HR dashboard** (progress list, document preview/download).
-4. **US12 — AI document verification:** Post-MVP, out of scope for now.
+1. **US08–09 — Automated reminders (Celery + Redis)** and reminder config.
+2. **US10–11 — HR dashboard** (progress list, document preview/download).
+3. **US12 — AI document verification:** Post-MVP, out of scope for now.

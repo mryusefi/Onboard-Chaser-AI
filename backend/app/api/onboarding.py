@@ -25,6 +25,8 @@ from app.services.onboarding_service import (
     compute_completion_percentage,
     update_document_status,
 )
+from app.services.email_service import send_invitation as send_email, is_email_configured
+from app.models.models import Onboarding, InvitationEmailStatus as IES
 from app.services.document_service import (
     upload_file_to_storage,
     get_document_for_upload,
@@ -195,4 +197,88 @@ def storage_status():
         "storage_backend": "cloudflare_r2" if storage.is_r2_configured() else "local_filesystem",
         "bucket": settings.R2_BUCKET_NAME or None,
         "structure": "onboardings/{onboarding_id}/{document_id}.{ext}",
+    }
+
+
+# ────────────────────────────────────────────────────────────────────────
+# US07 — Invitation e‑mail endpoints
+# ────────────────────────────────────────────────────────────────────────
+@router.post("/{onboarding_id}/send-invitation")
+def send_invitation_endpoint(
+    onboarding_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Send (or re‑send) the candidate invitation e‑mail (US07).
+
+    Returns the delivery status, the portal URL, and the expiry. The status
+    can be `not_sent` (no Resend key), `sent` (provider accepted), `failed`
+    (provider error – see `last_error`), or `delivered` / `bounced` (only
+    if a Resend webhook is configured – see README).
+    """
+    try:
+        oid = UUID(onboarding_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid onboarding ID")
+
+    onboarding = db.query(Onboarding).filter(Onboarding.id == oid).first()
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Onboarding not found")
+
+    candidate = onboarding.candidate
+    try:
+        result = send_email(
+            candidate_name=candidate.full_name,
+            company_name=settings.APP_NAME,
+            position=candidate.position,
+            candidate_email=candidate.email,
+            onboarding_id=onboarding.id,
+            db=db,
+        )
+    except ValueError as e:
+        if str(e) == "onboarding_not_found":
+            raise HTTPException(status_code=404, detail="Onboarding not found")
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Persist tracking fields
+    onboarding.invitation_email_status = result["status"]
+    onboarding.invitation_sent_at = result.get("sent_at")
+    onboarding.invitation_last_error = result.get("last_error")
+    db.commit()
+
+    return {
+        "onboarding_id": str(onboarding.id),
+        "candidate_email": candidate.email,
+        "status": onboarding.invitation_email_status.value,
+        "sent_at": onboarding.invitation_sent_at.isoformat() if onboarding.invitation_sent_at else None,
+        "last_error": onboarding.invitation_last_error,
+        "portal_url": result["portal_url"],
+        "expiry_hours": result["expiry_hours"],
+        "email_configured": is_email_configured(),
+    }
+
+
+@router.get("/{onboarding_id}/invitation-status")
+def invitation_status_endpoint(
+    onboarding_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Return current invitation tracking fields without resending (US07)."""
+    try:
+        oid = UUID(onboarding_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid onboarding ID")
+
+    onboarding = db.query(Onboarding).filter(Onboarding.id == oid).first()
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Onboarding not found")
+
+    return {
+        "onboarding_id": str(onboarding.id),
+        "candidate_email": onboarding.candidate.email,
+        "status": onboarding.invitation_email_status.value,
+        "sent_at": onboarding.invitation_sent_at.isoformat() if onboarding.invitation_sent_at else None,
+        "last_error": onboarding.invitation_last_error,
     }

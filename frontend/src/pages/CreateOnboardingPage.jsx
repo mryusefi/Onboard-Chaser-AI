@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FileText, Plus, Trash2, CheckCircle2, AlertCircle, Loader2, ArrowLeft } from 'lucide-react'
+import { FileText, Plus, Trash2, CheckCircle2, AlertCircle, Loader2, ArrowLeft, Mail } from 'lucide-react'
 
 const DEFAULT_DOCS = [
   { name: 'Government ID', description: '', instructions: 'Upload a clear photo/scan of your government-issued ID.', accepted_formats: 'PDF, JPG, PNG', required: true },
@@ -88,54 +88,10 @@ export default function CreateOnboardingPage() {
   // ---------- Success summary ----------
   if (result) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-10 px-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8">
-            <div className="flex items-center gap-3 mb-6">
-              <CheckCircle2 className="w-8 h-8 text-green-500" />
-              <h1 className="text-2xl font-bold text-slate-900">Onboarding Created</h1>
-            </div>
-
-            <div className="space-y-4 mb-6">
-              <div className="bg-slate-50 rounded-xl p-4">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Candidate</p>
-                <p className="text-base font-medium text-slate-900">{result.candidate.full_name}</p>
-                <p className="text-sm text-slate-600">{result.candidate.email}</p>
-                {result.candidate.position && (
-                  <p className="text-sm text-slate-500">Position: {result.candidate.position}</p>
-                )}
-              </div>
-              <div className="bg-slate-50 rounded-xl p-4">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Onboarding</p>
-                <p className="text-sm text-slate-700">
-                  Status: <span className="font-medium capitalize">{result.onboarding.status}</span>
-                </p>
-                <p className="text-sm text-slate-700">{result.documents.length} documents requested</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Required Documents</p>
-                <ul className="space-y-2">
-                  {result.documents.map((doc) => (
-                    <li key={doc.id} className="flex items-center gap-2 text-sm text-slate-700">
-                      <FileText className="w-4 h-4 text-primary-500 shrink-0" />
-                      <span className="font-medium">{doc.name}</span>
-                      {!doc.required && <span className="text-xs text-slate-400">(optional)</span>}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            <button
-              onClick={() => navigate('/admin/onboarding/new')}
-              onClickCapture={() => window.location.reload()}
-              className="w-full py-3 rounded-xl font-semibold text-white bg-primary-600 hover:bg-primary-700 transition-colors"
-            >
-              Create Another Onboarding
-            </button>
-          </div>
-        </div>
-      </div>
+      <InvitationPanel
+        result={result}
+        onReset={() => window.location.reload()}
+      />
     )
   }
 
@@ -230,6 +186,159 @@ export default function CreateOnboardingPage() {
               {loading ? (<><Loader2 className="w-5 h-5 animate-spin" /> Creating…</>) : 'Create Onboarding'}
             </button>
           </form>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+function InvitationPanel({ result, onReset }) {
+  const onboardingId = result.onboarding.id
+  const [invite, setInvite] = useState(null)   // response from send-invitation
+  const [invStatus, setInvStatus] = useState('not_sent')
+  const [sending, setSending] = useState(false)
+  const [inviteError, setInviteError] = useState(null)
+  const [copied, setCopied] = useState(false)
+
+  const sendInvitation = async () => {
+    setSending(true)
+    setInviteError(null)
+    try {
+      const resp = await fetch(`/api/v1/onboarding/${onboardingId}/send-invitation`, { method: 'POST' })
+      const data = await resp.json()
+      if (!resp.ok) throw new Error(data.detail || 'Failed to send invitation')
+      setInvite(data)
+      setInvStatus(data.status)
+    } catch (err) {
+      setInviteError(err.message)
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const copyLink = async () => {
+    const url = invite?.portal_url
+    if (!url) return
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // clipboard unavailable (insecure context) — ignore
+    }
+  }
+
+  const statusStyles = {
+    not_sent: 'bg-slate-100 text-slate-600',
+    sent: 'bg-blue-100 text-blue-700',
+    failed: 'bg-red-100 text-red-700',
+    delivered: 'bg-green-100 text-green-700',
+    bounced: 'bg-orange-100 text-orange-700',
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-10 px-4">
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8">
+          <div className="flex items-center gap-3 mb-6">
+            <CheckCircle2 className="w-8 h-8 text-green-500" />
+            <h1 className="text-2xl font-bold text-slate-900">Onboarding Created</h1>
+          </div>
+
+          <div className="space-y-4 mb-6">
+            <div className="bg-slate-50 rounded-xl p-4">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Candidate</p>
+              <p className="text-base font-medium text-slate-900">{result.candidate.full_name}</p>
+              <p className="text-sm text-slate-600">{result.candidate.email}</p>
+              {result.candidate.position && (
+                <p className="text-sm text-slate-500">Position: {result.candidate.position}</p>
+              )}
+            </div>
+            <div className="bg-slate-50 rounded-xl p-4">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Onboarding</p>
+              <p className="text-sm text-slate-700">
+                Status: <span className="font-medium capitalize">{result.onboarding.status}</span>
+              </p>
+              <p className="text-sm text-slate-700">{result.documents.length} documents requested</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Required Documents</p>
+              <ul className="space-y-2">
+                {result.documents.map((doc) => (
+                  <li key={doc.id} className="flex items-center gap-2 text-sm text-slate-700">
+                    <FileText className="w-4 h-4 text-primary-500 shrink-0" />
+                    <span className="font-medium">{doc.name}</span>
+                    {!doc.required && <span className="text-xs text-slate-400">(optional)</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* ── US07: Invitation panel ─────────────────────────────── */}
+          <div className="border-t border-slate-200 pt-6 mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-semibold text-slate-900">Invitation</h2>
+              <span className={`text-xs font-semibold px-3 py-1 rounded-full capitalize ${statusStyles[invStatus] || statusStyles.not_sent}`}>
+                {invStatus.replace('_', ' ')}
+              </span>
+            </div>
+
+            {inviteError && (
+              <div className="mb-3 flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                {inviteError}
+              </div>
+            )}
+
+            {invite?.last_error && (
+              <p className="mb-3 text-xs text-red-600">Provider error: {invite.last_error}</p>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={sendInvitation}
+                disabled={sending}
+                className="flex-1 py-2.5 rounded-xl font-semibold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              >
+                {sending ? (<><Loader2 className="w-4 h-4 animate-spin" /> Sending…</>) : (<><Mail className="w-4 h-4" /> Send Invitation</>)}
+              </button>
+              {invite?.portal_url && (
+                <button
+                  onClick={copyLink}
+                  className="py-2.5 px-4 rounded-xl font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors text-sm"
+                >
+                  {copied ? 'Copied!' : 'Copy portal link'}
+                </button>
+              )}
+            </div>
+
+            {invite && (
+              <div className="mt-3 text-xs text-slate-500 space-y-1">
+                <p>
+                  Email configured: <span className="font-medium">{invite.email_configured ? 'yes' : 'no'}</span>
+                  {!invite.email_configured && ' — set RESEND_API_KEY to enable real sending; link below still works.'}
+                </p>
+                <p>Link expires in {invite.expiry_hours} hours.</p>
+                {invite.portal_url && (
+                  <p className="break-all">
+                    <span className="font-medium">Portal link:</span>{' '}
+                    <a href={invite.portal_url} target="_blank" rel="noreferrer" className="text-primary-600 hover:underline">
+                      {invite.portal_url}
+                    </a>
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={onReset}
+            className="w-full py-3 rounded-xl font-semibold text-white bg-primary-600 hover:bg-primary-700 transition-colors"
+          >
+            Create Another Onboarding
+          </button>
         </div>
       </div>
     </div>
