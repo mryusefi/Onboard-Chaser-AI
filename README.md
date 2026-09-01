@@ -427,7 +427,6 @@ Conventional-commit prefixes used: `feat:`, `fix:`, `chore:`.
 
 ## 9. Roadmap (next stories)
 
-1. **US07 — Invitation email via Resend** with the secure portal link.
-2. **US08–09 — Automated reminders (Celery + Redis)** and reminder config.
-3. **US10–11 — HR dashboard** (progress list, document preview/download).
-4. **US12 — AI document verification:** Post-MVP, out of scope for now.
+1. **US08–09 — Automated reminders (Celery + Redis)** and reminder config.
+2. **US10–11 — HR dashboard** (progress list, document preview/download).
+3. **US12 — AI document verification:** Post-MVP, out of scope for now.
