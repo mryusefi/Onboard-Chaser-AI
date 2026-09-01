@@ -46,7 +46,7 @@ EMAIL_TEMPLATE = """\
     Your position is <strong>{{ position }}</strong>.</p>
 
     <p>Below is a <strong>secure portal link</strong> that will expire after
-    <strong>{{ expiry_hours }} hour{{ expiry_hours != 1 | pluralize }}</strong>.</p>
+    <strong>{{ expiry_hours }} hour{% if expiry_hours != 1 %}s{% endif %}</strong>.</p>
 
     <p style="margin-top:24px">
       <a href="{{ portal_url }}" target="_blank"
@@ -183,11 +183,11 @@ def send_invitation(
       - expiry_hours: the MAGIC_TOKEN_EXPIRE_HOURS value
     """
     from uuid import UUID
-    from datetime import datetime, timezone
+    from datetime import datetime, timezone, timedelta
 
     from app.core.security import create_magic_token, validate_magic_token
     from app.core.config import settings
-    from app.models.models import Onboarding, InvitationEmailStatus
+    from app.models.models import Onboarding, Document, InvitationEmailStatus
     from app.services.email_service import render_invitation_email, render_plain_text
 
     # ──① Ensure a valid magic link exists ───────────────────────────────
@@ -209,7 +209,7 @@ def send_invitation(
     expiry_hours = settings.MAGIC_TOKEN_EXPIRE_HOURS
 
     # ──② Render e‑mail (HTML + plain-text) ─────────────────────────────
-    docs = db.query(Document).filter(Onboarding.id == onboarding.id).all()
+    docs = db.query(Document).filter(Document.onboarding_id == onboarding.id).all()
     docs_list = [
         {"name": d.name, "instructions": d.instructions, "accepted_formats": d.accepted_formats}
         for d in docs
