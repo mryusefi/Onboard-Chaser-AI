@@ -12,7 +12,7 @@
 - **Branch:** `feature/automated-reminders` (US08 in progress / complete, NOT merged)
 - **Latest commit:** `05f131c chore: README + .env.example for US08 (story table, US08 section, endpoints, REMINDER_* config)`
 - **Status:** US08 committed on feature branch (8 commits ahead of main); not pushed, not merged
-- **Tests:** 121 passing (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6, US08:30)
+- **Tests:** 122 passing (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6, US08:31)
 
 ## Completed User Stories (US01–US07)
 All merged to main via feature branches. Plane epic + sub-tasks for each marked Done.
