@@ -16,6 +16,8 @@ from app.schemas.schemas import (
     MagicLinkRequest,
     MagicLinkResponse,
     DocumentResponse,
+    ReminderLogResponse,
+    ReminderSendResponse,
 )
 from app.services.onboarding_service import (
     create_onboarding_for_candidate,
@@ -26,7 +28,8 @@ from app.services.onboarding_service import (
     update_document_status,
 )
 from app.services.email_service import send_invitation as send_email, is_email_configured
-from app.models.models import Onboarding, InvitationEmailStatus as IES
+from app.services.reminder_service import send_reminder, REMINDER_TYPE_MIDWAY
+from app.models.models import Onboarding, ReminderLog, InvitationEmailStatus as IES
 from app.services.document_service import (
     upload_file_to_storage,
     get_document_for_upload,
@@ -282,3 +285,63 @@ def invitation_status_endpoint(
         "sent_at": onboarding.invitation_sent_at.isoformat() if onboarding.invitation_sent_at else None,
         "last_error": onboarding.invitation_last_error,
     }
+
+
+# ────────────────────────────────────────────────────────────────────────
+# US08 — Automated reminder endpoints
+# ────────────────────────────────────────────────────────────────────────
+def _get_onboarding_or_404(db: Session, onboarding_id: str) -> Onboarding:
+    """Shared lookup: 400 on bad UUID, 404 on unknown onboarding."""
+    try:
+        oid = UUID(onboarding_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="Invalid onboarding ID")
+    onboarding = db.query(Onboarding).filter(Onboarding.id == oid).first()
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Onboarding not found")
+    return onboarding
+
+
+@router.get("/{onboarding_id}/reminders", response_model=list[ReminderLogResponse])
+def get_reminder_history(
+    onboarding_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Reminder history for an onboarding (US08) — every attempt (sent, failed,
+    skipped) as a ReminderLog entry, oldest first. HR-authenticated.
+    """
+    onboarding = _get_onboarding_or_404(db, onboarding_id)
+    logs = (
+        db.query(ReminderLog)
+        .filter(ReminderLog.onboarding_id == onboarding.id)
+        .order_by(ReminderLog.sent_at.asc(), ReminderLog.id.asc())
+        .all()
+    )
+    return logs
+
+
+@router.post("/{onboarding_id}/send-reminder-now", response_model=ReminderSendResponse)
+def send_reminder_now(
+    onboarding_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Manual reminder trigger (US08) — same send_reminder() logic as the
+    scheduled task, logged identically in ReminderLog. `force=True` bypasses
+    cooldown/cap for HR override, but the attempt is still audited.
+    """
+    onboarding = _get_onboarding_or_404(db, onboarding_id)
+
+    log = send_reminder(db, onboarding, REMINDER_TYPE_MIDWAY, force=True)
+
+    return ReminderSendResponse(
+        onboarding_id=onboarding.id,
+        candidate_email=onboarding.candidate.email,
+        status=log.status.value,
+        reminder_type=log.reminder_type,
+        reason=log.reason,
+        sent_at=log.sent_at,
+    )

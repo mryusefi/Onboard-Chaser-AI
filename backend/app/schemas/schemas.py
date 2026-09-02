@@ -148,3 +148,27 @@ class FullOnboardingCreate(BaseModel):
     """
     candidate: CandidateCreate
     required_documents: Optional[List[RequiredDocumentCreate]] = None
+
+
+# --- US08: Reminder history ---
+class ReminderLogResponse(BaseModel):
+    """One reminder attempt against an onboarding (audit trail entry)."""
+    id: UUID
+    onboarding_id: UUID
+    status: str
+    reminder_type: str
+    reason: Optional[str] = None
+    sent_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ReminderSendResponse(BaseModel):
+    """Result of a manual send-reminder-now trigger (US08)."""
+    onboarding_id: UUID
+    candidate_email: str
+    status: str
+    reminder_type: str
+    reason: Optional[str] = None
+    sent_at: Optional[datetime] = None
