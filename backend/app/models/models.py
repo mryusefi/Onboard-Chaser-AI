@@ -33,6 +33,13 @@ class InvitationEmailStatus(str, enum.Enum):
     BOUNCED = "bounced"
 
 
+class ReminderStatus(str, enum.Enum):
+    """Outcome of one reminder attempt (US08 audit trail)."""
+    SENT = "sent"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -80,6 +87,9 @@ class Onboarding(Base):
 
     candidate = relationship("Candidate", back_populates="onboarding")
     documents = relationship("Document", back_populates="onboarding")
+    reminder_logs = relationship(
+        "ReminderLog", back_populates="onboarding", order_by="ReminderLog.sent_at"
+    )
 
 
 class Document(Base):
@@ -103,3 +113,30 @@ class Document(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     onboarding = relationship("Onboarding", back_populates="documents")
+
+
+class ReminderLog(Base):
+    """
+    Persistent audit trail for automated reminder attempts (US08).
+
+    One row is written for EVERY reminder attempt against an onboarding —
+    sent, failed (provider error) or skipped (cooldown/cap/disabled) — so HR
+    can see exactly what the reminder system did and when (US08 requirement:
+    "log reminder history").
+    """
+    __tablename__ = "reminder_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    onboarding_id = Column(
+        UUID(as_uuid=True), ForeignKey("onboardings.id"), nullable=False, index=True
+    )
+    sent_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    status = Column(SAEnum(ReminderStatus), nullable=False)
+    # reminder_type classifies WHY the reminder fired: "midway" (50% of token
+    # lifetime elapsed) or "expiry_warning" (within the pre-expiry window).
+    reminder_type = Column(String(50), nullable=False)
+    # Human-readable reason: skip motive (cooldown/cap/disabled) or the
+    # provider error message when status == failed.
+    reason = Column(Text, nullable=True)
+
+    onboarding = relationship("Onboarding", back_populates="reminder_logs")

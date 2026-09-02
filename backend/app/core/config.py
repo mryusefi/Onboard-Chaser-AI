@@ -32,6 +32,18 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://redis:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://redis:6379/0"
 
+    # US08/US09 — Automated reminder configuration.
+    # These REMINDER_* env vars are the configuration surface US09 will build
+    # its admin UI on top of; US08 reads them live at evaluation time with the
+    # defaults below as safe fallbacks. See app/services/reminder_service.py
+    # for how each knob is applied.
+    REMINDER_ENABLED: bool = True              # master switch for the reminder system
+    REMINDER_SCAN_INTERVAL_MINUTES: int = 60   # celery-beat scan interval (hourly)
+    REMINDER_MIDWAY_PERCENT: float = 0.5       # remind once 50% of token lifetime elapsed
+    REMINDER_EXPIRY_WINDOW_HOURS: int = 24     # remind again within 24h of link expiry
+    REMINDER_COOLDOWN_HOURS: int = 24          # min interval between two send attempts
+    REMINDER_MAX_COUNT: int = 3                # max successfully-sent reminders per onboarding
+
     # Frontend
     FRONTEND_URL: str = "http://localhost:5173"
 
