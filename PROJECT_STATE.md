@@ -9,21 +9,47 @@
 - GitHub: `https://github.com/mryusefi/Onboard-Chaser-AI.git`
 
 ## Current Git State
-- **Branch:** `feature/automated-reminders` (US08 in progress / complete, NOT merged)
-- **Latest commit:** `05f131c chore: README + .env.example for US08 (story table, US08 section, endpoints, REMINDER_* config)`
-- **Status:** US08 committed on feature branch (8 commits ahead of main); not pushed, not merged
-- **Tests:** 122 passing (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6, US08:31)
+- **Branch:** `feature/reminder-config` (US09; stacked on `feature/automated-reminders`/US08 — neither merged)
+- **Latest commit:** `84b8b56 chore: README for US09 (story table, US09 section, endpoints, config note, routes)`
+- **Status:** US08 + US09 committed on their feature branches; not pushed, not merged
+- **Tests:** 139 passing (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6, US08:31, US09:17)
 
 ## Completed User Stories (US01–US07)
 All merged to main via feature branches. Plane epic + sub-tasks for each marked Done.
 
-## Next Story: US09
-- **Epic:** US08–09 — Automated reminders + config
-- **US08 status:** COMPLETE on `feature/automated-reminders` (see "US08 — What Was Built" below)
-- **US09 work:** build the HR admin config surface on top of the `REMINDER_*`
-  settings that US08 already reads live (see below). Decide: DB-backed config
-  (new table + caching) vs. env-only UI. The rule engine, cap/cooldown,
-  template, celery beat interval all already honor these knobs at runtime.
+## Next Story: US10
+- **Epic:** US08–09 — DONE (Automated reminders + config)
+- **US08 status:** COMPLETE on `feature/automated-reminders` (12 commits)
+- **US09 status:** COMPLETE on `feature/reminder-config` (4 commits, stacked on US08)
+- **Next epic:** US10–11 — HR dashboard / candidate list / onboarding list / document detail view
+- Merge order when approved: US08 branch first, then US09 branch (stacked).
+
+## US09 — What Was Built (branch `feature/reminder-config`)
+- Scope decision (documented in models.py + README): ONE global ReminderConfig
+  singleton row (id=1), auto-created from REMINDER_* env defaults on first
+  read; row is authoritative afterwards. NOT per-onboarding overrides.
+- `ReminderConfig` model (models.py): reminder_frequency_hours (cooldown),
+  first_reminder_after_hours (NEW quiet-period gate),
+  final_reminder_before_expiry_hours (expiry window),
+  max_reminders_per_onboarding (cap), is_enabled (HR runtime kill switch;
+  env REMINDER_ENABLED stays deploy-level switch — both must be true).
+- reminder_service: get_reminder_config() (auto-create + graceful fallback),
+  apply_reminder_config() (validation shared by API/tests); rule engine
+  evaluate_reminder_rules() now has 7 gates reading live config values.
+- API (HR auth): GET/PUT /api/v1/settings/reminders in NEW app/api/settings.py
+  (imported ALIASED in main.py — `from app.api import settings` would shadow
+  app.core.config.settings). Invalid PUT -> 422, config untouched.
+  Validation: freq>=1, first>=0, 1<=final<MAGIC_TOKEN_EXPIRE_HOURS, max>=1.
+- Frontend: src/pages/ReminderSettingsPage.jsx at /admin/settings/reminders
+  (form, load/save states, inline validation, kill switch);
+  src/components/ReminderHistory.jsx on the onboarding summary view
+  (status chips + "Send reminder now" button); src/utils/api.js authFetch
+  helper (reads localStorage.hr_token — no login UI exists yet).
+- Frontend build verified: `npx vite build` OK (1574 modules).
+- Tests: tests/test_us09.py — 17 tests (GET defaults + auto-create +
+  idempotency, PUT happy paths, 5 validation cases incl. final>=lifetime,
+  auth on both endpoints, live-config integration: cooldown/disable/
+  re-enable/first-delay/send-blocked).
 
 ## US08 — What Was Built (branch `feature/automated-reminders`)
 - `backend/app/core/celery_app.py` — Celery app wired to CELERY_BROKER_URL /
@@ -113,7 +139,7 @@ cd frontend && npm install && npm run dev
 ```bash
 cd "E:\Onboard Chaser AI/MVP_Project/backend"
 TESTING=1 python -m pytest tests/ -q
-# Expected: 122 passed (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6, US08:31)
+# Expected: 139 passed (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6, US08:31, US09:17)
 ```
 
 ## Work Convention (must follow)
@@ -134,14 +160,14 @@ After finishing a US:
 - Test count in "Run the tests" → update total
 - Don't rewrite unrelated parts
 
-## What Does NOT Exist Yet (post-08 gaps)
-- US09: Reminder configuration surface (US08 reads REMINDER_* live from settings; US09 decides env-UI vs DB-backed)
+## What Does NOT Exist Yet (post-09 gaps)
 - US10-11: HR dashboard / candidate list view / onboarding list / document detail view
 - US12: AI document verification (out of scope)
-- No login UI (only API endpoints for register/login)
+- No login UI (only API endpoints for register/login; frontend authFetch
+  expects the HR JWT in localStorage.hr_token)
 - No admin shell / navigation from HomePage to admin pages
-- No reminder UI on HR pages (API-only; GET /reminders + POST /send-reminder-now ready)
-- Docker runtime verification of celery-worker/celery-beat pending (daemon was down during US08 session)
+- Docker runtime verification of celery-worker/celery-beat pending (daemon was
+  down during the US08/US09 sessions)
 
 ## Readme (master document)
 - README.md is comprehensive: architecture diagram, project structure, how to run (Docker + local), US01–US07 sections, full API table, config table, test instructions
