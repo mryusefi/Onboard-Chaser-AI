@@ -272,6 +272,9 @@ def send_reminder(
             db.commit()
             db.refresh(log)
             return log
+        # The rule engine's verdict wins over the caller's label so the
+        # audit trail always reflects WHY the reminder fired.
+        reminder_type = due_type
 
     candidate = onboarding.candidate
     token = onboarding.magic_token
