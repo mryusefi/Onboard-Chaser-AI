@@ -199,6 +199,22 @@ class TestReminderRules:
         assert rtype is None
         assert "cooldown" in reason
 
+    def test_skipped_rows_do_not_start_cooldown(self, db, hr_user):
+        # Audit-only skip rows (e.g. hourly "no reminder due" logs) must not
+        # push the next eligible attempt a cooldown window into the future.
+        onb = _make_onboarding(db, hr_user)
+        db.add(ReminderLog(
+            onboarding_id=onb.id, status=ReminderStatus.SKIPPED,
+            reminder_type="midway",
+            sent_at=datetime.now(timezone.utc) - timedelta(minutes=5),
+        ))
+        db.commit()
+        from app.services.reminder_service import evaluate_reminder_rules
+
+        rtype, reason = evaluate_reminder_rules(db, onb)
+        assert rtype == "midway"  # due, unaffected by the skip row
+        assert reason is None
+
     def test_expired_token_skips(self, db, hr_user):
         onb = _make_onboarding(
             db, hr_user, invited_hours_ago=100.0, expires_in_hours=-20.0

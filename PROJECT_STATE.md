@@ -50,7 +50,7 @@ All merged to main via feature branches. Plane epic + sub-tasks for each marked 
 - Config knobs (in config.py + .env.example): REMINDER_ENABLED,
   REMINDER_SCAN_INTERVAL_MINUTES, REMINDER_MIDWAY_PERCENT,
   REMINDER_EXPIRY_WINDOW_HOURS, REMINDER_COOLDOWN_HOURS, REMINDER_MAX_COUNT.
-- Tests: `tests/test_us08.py` — 30 tests (selection, rules, cap/cooldown,
+- Tests: `tests/test_us08.py` — 31 tests (selection, rules, cap/cooldown,
   endpoints incl. auth/404/400, celery wiring, end-to-end scan).
 
 ## US08 — Verification Notes / Gaps

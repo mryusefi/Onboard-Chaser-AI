@@ -165,7 +165,7 @@ npm run dev
 ```bash
 cd backend
 TESTING=1 python -m pytest tests/ -v
-# Expected: 121 passed (US01: 12, US02: 11, US03: 18, US04: 12, US05: 14, US06: 17, US07: 6, US08: 30)
+# Expected: 121 passed (US01: 12, US02: 11, US03: 18, US04: 12, US05: 14, US06: 17, US07: 6, US08: 31)
 ```
 
 Tests use an in-memory SQLite database (StaticPool) via `tests/conftest.py`, so

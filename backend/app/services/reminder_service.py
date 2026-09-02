@@ -107,10 +107,20 @@ def _expires_at(onboarding: Onboarding) -> datetime | None:
 # ────────────────────────────────────────────────────────────────────────
 # 2) Rule evaluation — which reminder (if any) is due right now?
 # ───────────────────────────────────────────────────────────────────────
-def _latest_reminder(db: Session, onboarding_id: UUID) -> ReminderLog | None:
+def _last_send_attempt(db: Session, onboarding_id: UUID) -> ReminderLog | None:
+    """
+    Most recent reminder that actually tried to send (SENT or FAILED).
+
+    Skipped rows are audit-only: they must NOT start a cooldown, otherwise
+    an hourly scan logging "no reminder due" would keep pushing the next
+    eligible attempt a full cooldown window into the future.
+    """
     return (
         db.query(ReminderLog)
-        .filter(ReminderLog.onboarding_id == onboarding_id)
+        .filter(
+            ReminderLog.onboarding_id == onboarding_id,
+            ReminderLog.status.in_([ReminderStatus.SENT, ReminderStatus.FAILED]),
+        )
         .order_by(ReminderLog.sent_at.desc())
         .first()
     )
@@ -157,8 +167,10 @@ def evaluate_reminder_rules(
             f"reminder cap reached ({sent_count}/{settings.REMINDER_MAX_COUNT} sent)"
         )
 
-    # Cooldown: minimum interval since the last attempt of any kind.
-    last = _latest_reminder(db, onboarding.id)
+    # Cooldown: minimum interval since the last SEND ATTEMPT of any kind
+    # (sent or failed — a failed attempt also counts so provider outages
+    # can't trigger a tight retry loop; audit-only skips don't count).
+    last = _last_send_attempt(db, onboarding.id)
     if last is not None:
         last_at = last.sent_at
         if last_at is not None:
