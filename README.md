@@ -86,7 +86,7 @@ MVP_Project/
     ├── index.html
     └── src/
         ├── main.jsx              # React entry, BrowserRouter
-        ├── App.jsx               # Routes: / and /onboard/:token
+        ├── App.jsx               # Routes: /, /onboard/:token, /admin/onboarding/new, /admin/settings/reminders
         ├── index.css             # Tailwind + gradient helper
         └── pages/
             ├── HomePage.jsx              # Landing page
@@ -165,7 +165,7 @@ npm run dev
 ```bash
 cd backend
 TESTING=1 python -m pytest tests/ -v
-# Expected: 122 passed (US01: 12, US02: 11, US03: 18, US04: 12, US05: 14, US06: 17, US07: 6, US08: 31)
+# Expected: 139 passed (US01: 12, US02: 11, US03: 18, US04: 12, US05: 14, US06: 17, US07: 6, US08: 31, US09: 17)
 ```
 
 Tests use an in-memory SQLite database (StaticPool) via `tests/conftest.py`, so
@@ -188,8 +188,8 @@ feature branch per story.
 | US05  | Document status tracking | ✅ Done (merged to main) | `feature/document-status` | 14 |
 | US06  | HR creates a new onboarding process | ✅ Done (feature branch, pending merge) | `feature/hr-onboarding-management` | 17 |
 | US07  | Invitation email via Resend | ✅ Done (feature branch, pending merge) | `feature/invitation-email` | 6 |
-| US08  | Automated reminder system | ✅ Done (feature branch, pending merge) | `feature/automated-reminders` | 30 |
-| US09  | Reminder configuration (admin UI on `REMINDER_*` knobs) | ⏳ Backlog | — | — |
+| US08  | Automated reminder system | ✅ Done (feature branch, pending merge) | `feature/automated-reminders` | 31 |
+| US09  | Reminder configuration (admin UI on global `ReminderConfig`) | ✅ Done (feature branch, pending merge) | `feature/reminder-config` (stacked on US08 branch) | 17 |
 | US10–11 | HR dashboard + document detail | ⏳ Backlog | — | — |
 | US12  | AI document verification | 🚫 Post-MVP (explicitly out of scope) | — | — |
 
@@ -373,6 +373,50 @@ feature branch per story.
   manual trigger for testing/override — same `send_reminder()` path and
   identical logging as the scheduled task.
 
+### US09 — Reminder Configuration
+- **Scope decision (MVP)**: ONE global `ReminderConfig` row (singleton,
+  `id=1`) — not per-onboarding overrides. One HR-tunable policy is all the
+  MVP needs; overrides would add UI + precedence rules with no use case.
+  The row is **auto-created from env-var defaults on first read** (no seed
+  script); afterwards the row is authoritative and HR edits persist.
+- `ReminderConfig` model (models.py), fields:
+  - `reminder_frequency_hours` (24) — min interval between reminder
+    *send attempts* (US08 cooldown now reads this).
+  - `first_reminder_after_hours` (24) — quiet period after the invitation
+    before the first reminder may fire (new gate in the rule engine).
+  - `final_reminder_before_expiry_hours` (24) — expiry-warning window
+    (US08 `REMINDER_EXPIRY_WINDOW_HOURS` now reads this).
+  - `max_reminders_per_onboarding` (3) — cap on *sent* reminders.
+  - `is_enabled` (true) — HR runtime kill switch; the env var
+    `REMINDER_ENABLED` remains the deploy-level switch (both must be true).
+  - Env vars `REMINDER_SCAN_INTERVAL_MINUTES` (celery-beat tick) and
+    `REMINDER_MIDWAY_PERCENT` (midway fraction) stay deployment settings:
+    beat reads its schedule at startup; the percentage is not an HR knob.
+- `reminder_service.get_reminder_config()` — auto-create-on-first-read with
+  graceful fallback to env-equivalent defaults if the row cannot be created;
+  `apply_reminder_config()` — validation + persistence, single source of
+  truth shared by the API and tests:
+  `reminder_frequency_hours >= 1`, `first_reminder_after_hours >= 0`,
+  `1 <= final_reminder_before_expiry_hours < MAGIC_TOKEN_EXPIRE_HOURS`,
+  `max_reminders_per_onboarding >= 1`. Invalid PUTs are rejected with 422
+  and leave the stored config untouched.
+- `GET /api/v1/settings/reminders` (HR auth): current config — always
+  returns a usable config (auto-creates defaults if none exists).
+- `PUT /api/v1/settings/reminders` (HR auth): update config with the
+  validation above.
+- Frontend:
+  - `src/pages/ReminderSettingsPage.jsx` at `/admin/settings/reminders` —
+    form for all five fields, loads current values on mount, inline
+    validation mirroring the backend rules, save with loading / success /
+    error states, enable/disable kill-switch checkbox.
+  - `src/components/ReminderHistory.jsx` — "Reminder History" section on
+    the onboarding summary view (below the invitation panel): lists past
+    reminders with status chips (sent/failed/skipped), type and timestamp,
+    plus a "Send reminder now" button wired to the US08 manual trigger.
+  - `src/utils/api.js` — `authFetch` helper: attaches the HR JWT from
+    `localStorage.hr_token` (the MVP has no login UI yet; paste the token
+    from `POST /api/v1/auth/login`).
+
 ### API endpoint summary
 
 | Method | Path | Purpose |
@@ -387,6 +431,8 @@ feature branch per story.
 | GET  | `/api/v1/onboarding/{onboarding_id}/invitation-status` | Invitation delivery status — **HR auth** (US07) |
 | GET  | `/api/v1/onboarding/{onboarding_id}/reminders` | Reminder history (audit trail) — **HR auth** (US08) |
 | POST | `/api/v1/onboarding/{onboarding_id}/send-reminder-now` | Manual reminder trigger — **HR auth** (US08) |
+| GET  | `/api/v1/settings/reminders` | Read global reminder config — **HR auth** (US09) |
+| PUT  | `/api/v1/settings/reminders` | Update global reminder config — **HR auth** (US09) |
 | POST | `/api/v1/onboarding/magic-link` | Generate secure portal link |
 | GET  | `/api/v1/onboarding/portal/{token}` | Validate token, open portal session |
 | GET  | `/api/v1/onboarding/document/{id}` | Document upload context |
@@ -412,13 +458,19 @@ Copy `backend/.env.example` → `backend/.env` and set real values:
 | `R2_ENDPOINT_URL` | `https://<account_id>.r2.cloudflarestorage.com` | empty |
 | `RESEND_API_KEY` / `EMAIL_FROM` | Resend email (US07) | empty |
 | `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND` | Redis URLs (US08) | `redis://redis:6379/0` |
-| `REMINDER_ENABLED` | Master switch for automated reminders (US08) | `true` |
-| `REMINDER_SCAN_INTERVAL_MINUTES` | celery-beat scan interval (US08) | `60` |
-| `REMINDER_MIDWAY_PERCENT` | Fraction of token lifetime before first reminder (US08) | `0.5` |
-| `REMINDER_EXPIRY_WINDOW_HOURS` | Warning window before link expiry (US08) | `24` |
-| `REMINDER_COOLDOWN_HOURS` | Min interval between reminder attempts (US08) | `24` |
-| `REMINDER_MAX_COUNT` | Max sent reminders per onboarding (US08) | `3` |
+| `REMINDER_ENABLED` | Deploy-level kill switch for reminders (US08; HR also gets a runtime switch via US09 config) | `true` |
+| `REMINDER_SCAN_INTERVAL_MINUTES` | celery-beat scan interval (US08; not an HR knob) | `60` |
+| `REMINDER_MIDWAY_PERCENT` | Fraction of token lifetime before the midway reminder (US08; not an HR knob) | `0.5` |
+| `REMINDER_EXPIRY_WINDOW_HOURS` | Default expiry-warning window — seeds the US09 config row | `24` |
+| `REMINDER_COOLDOWN_HOURS` | Default reminder frequency — seeds the US09 config row | `24` |
+| `REMINDER_MAX_COUNT` | Default reminder cap — seeds the US09 config row | `3` |
 | `FRONTEND_URL` | Used to build magic links | `http://localhost:5173` |
+
+> US09 note: after the first read, the `ReminderConfig` DB row (managed by HR
+> at `/admin/settings/reminders` or `PUT /api/v1/settings/reminders`) is
+> authoritative for frequency, first-reminder delay, expiry window, cap and
+> the runtime kill switch; the `REMINDER_*` env vars above only seed that row
+> and provide fallbacks if the row cannot be created.
 
 ---
 
