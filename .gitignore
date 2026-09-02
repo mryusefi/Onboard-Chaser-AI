@@ -8,3 +8,5 @@ node_modules/
 dist/
 *.db
 .hermes-tmp/
+.hermes-tmp.7Vlkqk/
+
