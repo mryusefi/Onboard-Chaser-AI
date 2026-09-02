@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import (
-    Column, String, Text, Boolean, DateTime, ForeignKey, Enum as SAEnum
+    Column, String, Text, Boolean, DateTime, ForeignKey, Integer, Enum as SAEnum
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -38,6 +38,45 @@ class ReminderStatus(str, enum.Enum):
     SENT = "sent"
     FAILED = "failed"
     SKIPPED = "skipped"
+
+
+class ReminderConfig(Base):
+    """
+    US09 — Reminder configuration.
+
+    SCOPE DECISION (MVP): a SINGLE GLOBAL config row (singleton, id=1), not
+    per-onboarding overrides. Rationale: the MVP needs one HR-tunable policy;
+    per-onboarding overrides add UI + precedence rules with no MVP use case.
+    The row is auto-created with built-in defaults on first read
+    (see reminder_service.get_reminder_config) — no seed script needed.
+
+    Field mapping vs. the US08 env-var fallbacks (app/core/config.py):
+      reminder_frequency_hours          <- REMINDER_COOLDOWN_HOURS (min
+                                           interval between reminder attempts)
+      first_reminder_after_hours        <- new: no reminder before this many
+                                           hours since the invitation anchor
+      final_reminder_before_expiry_hours<- REMINDER_EXPIRY_WINDOW_HOURS
+      max_reminders_per_onboarding      <- REMINDER_MAX_COUNT
+      is_enabled                        <- REMINDER_ENABLED (both must be true;
+                                           env var stays as a deploy-level kill
+                                           switch, the row is HR's runtime one)
+    REMINDER_SCAN_INTERVAL_MINUTES (celery-beat tick) and
+    REMINDER_MIDWAY_PERCENT (midway fraction) stay env-var driven: the beat
+    schedule is read once at worker startup, and a midway percentage is a
+    deployment policy, not an HR daily knob.
+    """
+    __tablename__ = "reminder_configs"
+
+    id = Column(Integer, primary_key=True, default=1)  # singleton row (id=1)
+    reminder_frequency_hours = Column(Integer, nullable=False, default=24)
+    first_reminder_after_hours = Column(Integer, nullable=False, default=24)
+    final_reminder_before_expiry_hours = Column(Integer, nullable=False, default=24)
+    max_reminders_per_onboarding = Column(Integer, nullable=False, default=3)
+    is_enabled = Column(Boolean, nullable=False, default=True)
+    updated_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
 
 class User(Base):

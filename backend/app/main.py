@@ -7,6 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.api import auth, onboarding, candidates
+# Aliased: `from app.api import settings` would shadow app.core.config.settings above.
+from app.api.settings import router as settings_router
 
 
 @asynccontextmanager
@@ -37,6 +39,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
 app.include_router(onboarding.router, prefix=settings.API_V1_PREFIX)
 app.include_router(candidates.router, prefix=settings.API_V1_PREFIX)
+app.include_router(settings_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/health")

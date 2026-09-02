@@ -172,3 +172,32 @@ class ReminderSendResponse(BaseModel):
     reminder_type: str
     reason: Optional[str] = None
     sent_at: Optional[datetime] = None
+
+
+# --- US09: Reminder configuration (singleton, HR-managed) ---
+class ReminderConfigResponse(BaseModel):
+    """The global reminder configuration row (US09)."""
+    reminder_frequency_hours: int
+    first_reminder_after_hours: int
+    final_reminder_before_expiry_hours: int
+    max_reminders_per_onboarding: int
+    is_enabled: bool
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ReminderConfigUpdate(BaseModel):
+    """
+    Payload for PUT /api/v1/settings/reminders (US09).
+
+    Field-level range checks are enforced in reminder_service.
+    apply_reminder_config (single source of truth) so the API and any future
+    callers share the exact same rules; validation errors surface as 422.
+    """
+    reminder_frequency_hours: Optional[int] = None
+    first_reminder_after_hours: Optional[int] = None
+    final_reminder_before_expiry_hours: Optional[int] = None
+    max_reminders_per_onboarding: Optional[int] = None
+    is_enabled: Optional[bool] = None
