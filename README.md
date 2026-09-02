@@ -109,7 +109,7 @@ cd "E:\Onboard Chaser AI\MVP_Project"
 cp backend/.env.example backend/.env
 #    (edit backend/.env if you have real credentials — see section 5)
 
-# 3. Build & start all services (db, redis, backend, frontend)
+# 3. Build & start all services (db, redis, backend, frontend, celery-worker, celery-beat)
 docker compose up --build
 
 # 4. Verify
@@ -118,6 +118,7 @@ docker compose up --build
 #    Frontend:        http://localhost:5173
 #    DB:              postgres://postgres:postgres@localhost:5432/onboard_chaser
 #    (host port is 5433 to avoid conflicts with other local Postgres — see section 1 / compose)
+#    Reminder scan:   docker compose logs celery-worker   (hourly beat tick)
 ```
 
 Stop with `Ctrl+C`, then `docker compose down`. To wipe the database volume:
@@ -164,7 +165,7 @@ npm run dev
 ```bash
 cd backend
 TESTING=1 python -m pytest tests/ -v
-# Expected: 91 passed (US01: 12, US02: 11, US03: 18, US04: 12, US05: 14, US06: 17, US07: 6)
+# Expected: 121 passed (US01: 12, US02: 11, US03: 18, US04: 12, US05: 14, US06: 17, US07: 6, US08: 30)
 ```
 
 Tests use an in-memory SQLite database (StaticPool) via `tests/conftest.py`, so
@@ -187,7 +188,8 @@ feature branch per story.
 | US05  | Document status tracking | ✅ Done (merged to main) | `feature/document-status` | 14 |
 | US06  | HR creates a new onboarding process | ✅ Done (feature branch, pending merge) | `feature/hr-onboarding-management` | 17 |
 | US07  | Invitation email via Resend | ✅ Done (feature branch, pending merge) | `feature/invitation-email` | 6 |
-| US08–09 | Automated reminders + config | ⏳ Backlog | — | — |
+| US08  | Automated reminder system | ✅ Done (feature branch, pending merge) | `feature/automated-reminders` | 30 |
+| US09  | Reminder configuration (admin UI on `REMINDER_*` knobs) | ⏳ Backlog | — | — |
 | US10–11 | HR dashboard + document detail | ⏳ Backlog | — | — |
 | US12  | AI document verification | 🚫 Post-MVP (explicitly out of scope) | — | — |
 
@@ -325,6 +327,52 @@ feature branch per story.
   (CreateOnboardingPage) with loading/success/error states, invitation status
   display, and the portal link shown for manual copy/share fallback.
 
+### US08 — Automated Reminder System
+- **Architecture**: Celery 5 + Redis (provisioned since the start of the
+  project, reserved for this epic) is now wired up:
+  - `app/core/celery_app.py` — Celery instance bound to
+    `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND` (the existing redis
+    service), JSON serialization, UTC. Beat schedule:
+    `scan_and_send_reminders` every `REMINDER_SCAN_INTERVAL_MINUTES`
+    (default 60 → hourly).
+  - `app/tasks/reminder_tasks.py` — the periodic scan task: pulls incomplete
+    onboardings, applies the reminder rules, sends where due, and writes a
+    `ReminderLog` row for **every** attempt (sent / failed / skipped).
+    Per-onboarding failures are caught so one bad row can't kill the scan;
+    the task also autoretries on unexpected errors (3×, 30 s backoff).
+  - `docker-compose.yml` — new `celery-worker` and `celery-beat` services,
+    same backend image/Dockerfile, codebase and `.env`; the existing
+    db/redis/backend/frontend services are untouched.
+- `app/services/reminder_service.py` (new):
+  - `get_incomplete_onboardings()` — onboardings `pending`/`in_progress`
+    with at least one document not in `uploaded`/`completed`.
+  - Reminder rules (all thresholds read **live** from settings → US09 can
+    expose them without code changes; safe defaults baked into
+    `app/core/config.py`):
+    - *midway*: once ≥50% (`REMINDER_MIDWAY_PERCENT`) of the token lifetime
+      has elapsed since `invitation_sent_at` (fallback `created_at`), within
+      the first half of the remaining lifetime.
+    - *expiry_warning*: when < `REMINDER_EXPIRY_WINDOW_HOURS` (24 h) remain
+      before `token_expires_at`.
+    - *cap*: max `REMINDER_MAX_COUNT` (3) **sent** reminders per onboarding.
+    - *cooldown*: min `REMINDER_COOLDOWN_HOURS` (24 h) between attempts of
+      any kind (a failed attempt also starts a cooldown → no tight loops).
+  - `send_reminder()` — reuses email_service's Resend integration; new
+    reminder-specific template (HTML + plain-text) listing **only** the
+    still-missing documents and the days left before link expiry. Same
+    graceful fallback as US07: no `RESEND_API_KEY` → skipped + logged, no
+    crash. `force=True` (manual HR trigger) bypasses cap/cooldown but is
+    still audited.
+- `ReminderLog` model (models.py): id, onboarding_id (FK, indexed), sent_at,
+  status (`sent | failed | skipped` — `ReminderStatus` enum), reminder_type
+  (`midway` / `expiry_warning`), reason (skip motive or provider error) —
+  the persistent audit trail for reminder history.
+- `GET /api/v1/onboarding/{onboarding_id}/reminders` (HR auth): full
+  reminder history for one onboarding, oldest first.
+- `POST /api/v1/onboarding/{onboarding_id}/send-reminder-now` (HR auth):
+  manual trigger for testing/override — same `send_reminder()` path and
+  identical logging as the scheduled task.
+
 ### API endpoint summary
 
 | Method | Path | Purpose |
@@ -337,6 +385,8 @@ feature branch per story.
 | POST | `/api/v1/onboarding/{candidate_id}` | Create onboarding (+ optional custom docs) — **HR auth** (US06) |
 | POST | `/api/v1/onboarding/{onboarding_id}/send-invitation` | Send invitation email (Resend) — **HR auth** (US07) |
 | GET  | `/api/v1/onboarding/{onboarding_id}/invitation-status` | Invitation delivery status — **HR auth** (US07) |
+| GET  | `/api/v1/onboarding/{onboarding_id}/reminders` | Reminder history (audit trail) — **HR auth** (US08) |
+| POST | `/api/v1/onboarding/{onboarding_id}/send-reminder-now` | Manual reminder trigger — **HR auth** (US08) |
 | POST | `/api/v1/onboarding/magic-link` | Generate secure portal link |
 | GET  | `/api/v1/onboarding/portal/{token}` | Validate token, open portal session |
 | GET  | `/api/v1/onboarding/document/{id}` | Document upload context |
@@ -362,6 +412,12 @@ Copy `backend/.env.example` → `backend/.env` and set real values:
 | `R2_ENDPOINT_URL` | `https://<account_id>.r2.cloudflarestorage.com` | empty |
 | `RESEND_API_KEY` / `EMAIL_FROM` | Resend email (US07) | empty |
 | `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND` | Redis URLs (US08) | `redis://redis:6379/0` |
+| `REMINDER_ENABLED` | Master switch for automated reminders (US08) | `true` |
+| `REMINDER_SCAN_INTERVAL_MINUTES` | celery-beat scan interval (US08) | `60` |
+| `REMINDER_MIDWAY_PERCENT` | Fraction of token lifetime before first reminder (US08) | `0.5` |
+| `REMINDER_EXPIRY_WINDOW_HOURS` | Warning window before link expiry (US08) | `24` |
+| `REMINDER_COOLDOWN_HOURS` | Min interval between reminder attempts (US08) | `24` |
+| `REMINDER_MAX_COUNT` | Max sent reminders per onboarding (US08) | `3` |
 | `FRONTEND_URL` | Used to build magic links | `http://localhost:5173` |
 
 ---
