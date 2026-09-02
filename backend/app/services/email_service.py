@@ -132,6 +132,128 @@ def render_plain_text(
 
 
 # ────────────────────────────────────────────────────────────────────────
+# US08 — Reminder e-mail templates (distinct from the invitation template)
+# ────────────────────────────────────────────────────────────────────────
+REMINDER_TEMPLATE = """\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {font-family:system-ui,system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+          margin:0;background:#f7f9fc;line-height:1.5;color:#1e293b}
+    .wrapper {max-width:600px;margin:0 auto;background:#fff;padding:32px 24px;border-radius:12px;
+              box-shadow:0 4px 12px rgba(0,0,0,0.04)}
+    .header {text-align:center;padding-bottom:24px;border-bottom:1px solid #e2e8f0}
+    .header h1 {font-size:22px;margin:0;color:#1e293b}
+    .badge {display:inline-block;background:#fef3c7;color:#92400e;font-size:12px;
+            font-weight:600;padding:4px 12px;border-radius:999px;margin-top:12px}
+    .badge.urgent {background:#fee2e2;color:#991b1b}
+    .content {margin-top:24px}
+    .bullet {margin:8px 0;padding-left:16px;list-style:none}
+    .bullet li {position:relative}
+    .bullet li:before {content:"•";position:absolute;left:0;color:#64748b}
+    .footer {margin-top:24px;font-size:12px;color:#64748b;text-align:center}
+    .footer a {color:#64748b;text-decoration:none}
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>Your onboarding is still incomplete</h1>
+      <span class="badge{% if urgent %} urgent{% endif %}">
+        {{ days_left }} day{% if days_left != 1 %}s{% endif %} left to complete it
+      </span>
+    </div>
+
+    <p>Hello {{ candidate_name }},</p>
+
+    <p>This is a friendly reminder about your onboarding for
+    <strong>{{ company_name }}</strong>{% if position %} (<strong>{{ position }}</strong>){% endif %}.
+    You still have <strong>{{ doc_count }} document{{ '' if doc_count == 1 else 's' }}</strong>
+    to submit.</p>
+
+    <p class="bullet"><strong>Still missing:</strong></p>
+    <ul class="bullet">
+      {% for doc in docs %}
+        <li>{{ doc.name }}{% if doc.instructions %}: {{ doc.instructions }}{% endif %}</li>
+      {% endfor %}
+    </ul>
+
+    <p>Your secure portal link expires in
+    <strong>{{ days_left }} day{% if days_left != 1 %}s{% endif %}</strong>.</p>
+
+    <p style="margin-top:24px">
+      <a href="{{ portal_url }}" target="_blank"
+         style="background:#3b82f6;color:#fff;padding:12px 24px;border-radius:6px;
+              font-weight:600;text-decoration:none">
+        Continue onboarding
+      </a>
+    </p>
+
+    <p style="margin-top:24px">
+      If you have any questions, reply to this email or contact our HR team.
+    </p>
+  </div>
+</body>
+</html>
+"""
+
+
+def render_reminder_email(
+    candidate_name: str,
+    company_name: str,
+    position: Optional[str],
+    portal_url: str,
+    days_left: int,
+    docs: list[dict],
+) -> str:
+    """Render the reminder e-mail HTML (US08) — lists only still-missing docs."""
+    return _env.from_string(REMINDER_TEMPLATE).render(
+        candidate_name=candidate_name,
+        company_name=company_name or "Onboard Chaser AI",
+        position=position or "",
+        portal_url=portal_url,
+        days_left=days_left,
+        docs=docs,
+        doc_count=len(docs),
+        urgent=days_left <= 1,
+    )
+
+
+def render_reminder_plain_text(
+    candidate_name: str,
+    company_name: str,
+    position: Optional[str],
+    portal_url: str,
+    days_left: int,
+    docs: list[dict],
+) -> str:
+    """Plain-text fallback for the reminder e-mail (US08)."""
+    lines = [
+        f"Hello {candidate_name},",
+        f"Reminder: your onboarding for {company_name or 'Onboard Chaser AI'} is still incomplete.",
+        f"You still have {len(docs)} document{'' if len(docs) == 1 else 's'} to submit:",
+    ]
+    for doc in docs:
+        name = doc.get("name", "Document")
+        instr = doc.get("instructions")
+        line = f"- {name}"
+        if instr:
+            line += f": {instr}"
+        lines.append(line)
+    lines += [
+        "",
+        f"Your secure portal link expires in {days_left} day{'' if days_left == 1 else 's'}.",
+        f"Portal URL: {portal_url}",
+        "",
+        "If you have any questions, reply to this email or contact our HR team.",
+    ]
+    return "\n".join(lines)
+
+
+# ────────────────────────────────────────────────────────────────────────
 # 2️⃣ Resend SDK wrapper (fallback when RESEND_API_KEY is absent)
 # ────────────────────────────────────────────────────────────────────────
 try:
