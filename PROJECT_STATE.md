@@ -9,17 +9,58 @@
 - GitHub: `https://github.com/mryusefi/Onboard-Chaser-AI.git`
 
 ## Current Git State
-- **Branch:** `main` (synced with `origin/main`)
-- **Latest commit:** `7dc2382 Merge pull request #7 from feature/invitation-email`
-- **Status:** Clean, no uncommitted changes, up to date with remote
-- **Tests:** 91 passing (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6)
+- **Branch:** `feature/automated-reminders` (US08 in progress / complete, NOT merged)
+- **Latest commit:** `05f131c chore: README + .env.example for US08 (story table, US08 section, endpoints, REMINDER_* config)`
+- **Status:** US08 committed on feature branch (8 commits ahead of main); not pushed, not merged
+- **Tests:** 121 passing (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6, US08:30)
 
 ## Completed User Stories (US01–US07)
 All merged to main via feature branches. Plane epic + sub-tasks for each marked Done.
 
-## Next Story: US08
+## Next Story: US09
 - **Epic:** US08–09 — Automated reminders + config
-- **Plane epic ID:** (not critical; look it up fresh in Plane)
+- **US08 status:** COMPLETE on `feature/automated-reminders` (see "US08 — What Was Built" below)
+- **US09 work:** build the HR admin config surface on top of the `REMINDER_*`
+  settings that US08 already reads live (see below). Decide: DB-backed config
+  (new table + caching) vs. env-only UI. The rule engine, cap/cooldown,
+  template, celery beat interval all already honor these knobs at runtime.
+
+## US08 — What Was Built (branch `feature/automated-reminders`)
+- `backend/app/core/celery_app.py` — Celery app wired to CELERY_BROKER_URL /
+  CELERY_RESULT_BACKEND (redis://redis:6379/0); beat entry
+  `scan-and-send-reminders` every REMINDER_SCAN_INTERVAL_MINUTES*60 s.
+- `backend/app/tasks/reminder_tasks.py` — `scan_and_send_reminders`: hourly
+  scan; every attempt (sent/failed/skipped) writes a ReminderLog; per-row
+  errors caught; autoretry 3× with 30 s backoff. Uses `_session_factory()`
+  indirection so tests can inject the SQLite session.
+- `backend/app/services/reminder_service.py` — get_incomplete_onboardings(),
+  evaluate_reminder_rules() (midway/expiry_warning/cap/cooldown, read live
+  from settings), send_reminder() (force flag for manual HR trigger).
+- Reminder templates in `email_service.py` (render_reminder_email /
+  render_reminder_plain_text) — distinct from invitation template; lists only
+  missing docs + days left; same no-Resend-key fallback (skipped, no crash).
+- `ReminderLog` model + `ReminderStatus` enum in models.py; Onboarding.
+  reminder_logs relationship.
+- API (HR auth): GET `/{onboarding_id}/reminders`,
+  POST `/{onboarding_id}/send-reminder-now` in `api/onboarding.py`; schemas
+  `ReminderLogResponse`, `ReminderSendResponse` in schemas.py.
+- docker-compose.yml: `celery-worker` + `celery-beat` services (same backend
+  image/.env/volume; db/redis/backend/frontend untouched; validated with
+  `docker compose config`).
+- Config knobs (in config.py + .env.example): REMINDER_ENABLED,
+  REMINDER_SCAN_INTERVAL_MINUTES, REMINDER_MIDWAY_PERCENT,
+  REMINDER_EXPIRY_WINDOW_HOURS, REMINDER_COOLDOWN_HOURS, REMINDER_MAX_COUNT.
+- Tests: `tests/test_us08.py` — 30 tests (selection, rules, cap/cooldown,
+  endpoints incl. auth/404/400, celery wiring, end-to-end scan).
+
+## US08 — Verification Notes / Gaps
+- Full suite green: 121 passed locally (in-memory SQLite, no Docker needed).
+- Celery app boot verified: broker/backend URLs, beat interval 3600 s, task
+  registered and matches the beat entry.
+- Docker daemon was NOT running on this host, so worker/beat were not
+  exercised against a live Redis. When Docker is up:
+  `docker compose up -d db redis backend celery-worker celery-beat` then
+  `docker compose logs celery-worker` after a beat tick.
 
 ## Architecture (unchanged since session 1)
 - Backend: FastAPI + SQLAlchemy + Pydantic v2 + python:3.11-slim-bookworm (Docker)
@@ -72,7 +113,7 @@ cd frontend && npm install && npm run dev
 ```bash
 cd "E:\Onboard Chaser AI/MVP_Project/backend"
 TESTING=1 python -m pytest tests/ -q
-# Expected: 91 passed (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6)
+# Expected: 121 passed (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6, US08:30)
 ```
 
 ## Work Convention (must follow)
@@ -93,12 +134,14 @@ After finishing a US:
 - Test count in "Run the tests" → update total
 - Don't rewrite unrelated parts
 
-## What Does NOT Exist Yet (post-07 gaps)
-- US08-09: Automated reminders (Celery + Redis broker in deps/compose, no worker or task scheduled)
+## What Does NOT Exist Yet (post-08 gaps)
+- US09: Reminder configuration surface (US08 reads REMINDER_* live from settings; US09 decides env-UI vs DB-backed)
 - US10-11: HR dashboard / candidate list view / onboarding list / document detail view
 - US12: AI document verification (out of scope)
 - No login UI (only API endpoints for register/login)
 - No admin shell / navigation from HomePage to admin pages
+- No reminder UI on HR pages (API-only; GET /reminders + POST /send-reminder-now ready)
+- Docker runtime verification of celery-worker/celery-beat pending (daemon was down during US08 session)
 
 ## Readme (master document)
 - README.md is comprehensive: architecture diagram, project structure, how to run (Docker + local), US01–US07 sections, full API table, config table, test instructions
