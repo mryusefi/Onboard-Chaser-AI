@@ -60,5 +60,40 @@ services:
       - ./frontend:/app
       - /app/node_modules
 
+  # US08 — Celery worker: executes the reminder tasks (same backend image,
+  # codebase and .env as the `backend` service; connects to the existing
+  # redis service via CELERY_BROKER_URL).
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2
+    env_file:
+      - ./backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+
+  # US08 — Celery beat: periodic scheduler that enqueues
+  # scan_and_send_reminders on the configured interval (hourly by default).
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.core.celery_app beat --loglevel=info
+    env_file:
+      - ./backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+
 volumes:
   postgres_data:
