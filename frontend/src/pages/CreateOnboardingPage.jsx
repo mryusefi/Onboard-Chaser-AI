@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FileText, Plus, Trash2, CheckCircle2, AlertCircle, Loader2, ArrowLeft, Mail } from 'lucide-react'
+import ReminderHistory from '../components/ReminderHistory'
 
 const DEFAULT_DOCS = [
   { name: 'Government ID', description: '', instructions: 'Upload a clear photo/scan of your government-issued ID.', accepted_formats: 'PDF, JPG, PNG', required: true },
@@ -333,9 +334,12 @@ function InvitationPanel({ result, onReset }) {
             )}
           </div>
 
+          {/* ── US08/US09: Reminder history + manual trigger ─────────── */}
+          <ReminderHistory onboardingId={onboardingId} />
+
           <button
             onClick={onReset}
-            className="w-full py-3 rounded-xl font-semibold text-white bg-primary-600 hover:bg-primary-700 transition-colors"
+            className="w-full py-3 rounded-xl font-semibold text-white bg-primary-600 hover:bg-primary-700 transition-colors mt-6"
           >
             Create Another Onboarding
           </button>
