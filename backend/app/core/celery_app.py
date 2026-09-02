@@ -13,7 +13,6 @@ triggers sends via reminder_service (synchronous), keeping the web process
 independent of the broker.
 """
 from celery import Celery
-from celery.schedules import crontab
 
 from app.core.config import settings
 
@@ -36,15 +35,13 @@ celery_app.conf.update(
 )
 
 # ── Periodic schedule (celery-beat) ─────────────────────────────────────
-# The scan interval is configurable (US09-ready): REMINDER_SCAN_INTERVAL_
-# MINUTES, default hourly. Beat evaluates this once at startup — operators
-# changing the env var should restart the beat container.
+# Scan interval is configurable via REMINDER_SCAN_INTERVAL_MINUTES (US09-
+# ready), default 60 = hourly. Beat evaluates the schedule once at startup:
+# operators changing the env var must restart the celery-beat container.
 celery_app.conf.beat_schedule = {
     "scan-and-send-reminders": {
         "task": "app.tasks.reminder_tasks.scan_and_send_reminders",
-        "schedule": crontab(minute=0),  # top of every hour
-        # For finer control than an hourly crontab, the float-schedule form
-        # (seconds) is used when the interval is not a multiple of 60:
-        #   "schedule": settings.REMINDER_SCAN_INTERVAL_MINUTES * 60
+        # Float schedule = "every N seconds" (60 min * 60 s default).
+        "schedule": settings.REMINDER_SCAN_INTERVAL_MINUTES * 60.0,
     },
 }
