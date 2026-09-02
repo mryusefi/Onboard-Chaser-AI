@@ -23,6 +23,14 @@ from app.services.reminder_service import (
 logger = logging.getLogger(__name__)
 
 
+def _session_factory() -> Session:
+    """
+    Indirection around SessionLocal so tests can patch the DB session
+    (in-memory SQLite) without touching Celery machinery.
+    """
+    return SessionLocal()
+
+
 def _serialize_log(log: ReminderLog) -> dict:
     return {
         "onboarding_id": str(log.onboarding_id),
@@ -60,7 +68,7 @@ def scan_and_send_reminders(self) -> dict:
         "errors": [],
     }
 
-    db: Session = SessionLocal()
+    db: Session = _session_factory()
     try:
         onboardings = get_incomplete_onboardings(db)
         summary["scanned"] = len(onboardings)
