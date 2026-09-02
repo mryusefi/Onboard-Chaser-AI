@@ -54,7 +54,7 @@ All merged to main via feature branches. Plane epic + sub-tasks for each marked 
   endpoints incl. auth/404/400, celery wiring, end-to-end scan).
 
 ## US08 — Verification Notes / Gaps
-- Full suite green: 121 passed locally (in-memory SQLite, no Docker needed).
+- Full suite green: 122 passed locally (in-memory SQLite, no Docker needed).
 - Celery app boot verified: broker/backend URLs, beat interval 3600 s, task
   registered and matches the beat entry.
 - Docker daemon was NOT running on this host, so worker/beat were not
@@ -113,7 +113,7 @@ cd frontend && npm install && npm run dev
 ```bash
 cd "E:\Onboard Chaser AI/MVP_Project/backend"
 TESTING=1 python -m pytest tests/ -q
-# Expected: 121 passed (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6, US08:30)
+# Expected: 122 passed (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6, US08:31)
 ```
 
 ## Work Convention (must follow)
