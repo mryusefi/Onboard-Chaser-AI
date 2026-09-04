@@ -201,3 +201,39 @@ class ReminderConfigUpdate(BaseModel):
     final_reminder_before_expiry_hours: Optional[int] = None
     max_reminders_per_onboarding: Optional[int] = None
     is_enabled: Optional[bool] = None
+
+
+# --- US10: HR dashboard list ---
+class CandidateBrief(BaseModel):
+    """Candidate fields shown in the dashboard list (US10)."""
+    full_name: str
+    email: str
+    position: Optional[str] = None
+
+
+class OnboardingListItemResponse(BaseModel):
+    """
+    One row of the HR dashboard list (US10).
+
+    needs_attention is derived by the documented rule in
+    onboarding_service.list_onboardings (expired link / never invited /
+    zero progress > 24h / reminder failed or cap-reached skip).
+    """
+    onboarding_id: UUID
+    candidate: CandidateBrief
+    status: str
+    completion_percentage: int
+    completed_documents: int
+    total_documents: int
+    invitation_email_status: str
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    needs_attention: bool
+
+
+class OnboardingListResponse(BaseModel):
+    """Paginated onboarding list with metadata (US10)."""
+    items: List[OnboardingListItemResponse]
+    total: int
+    page: int
+    page_size: int
