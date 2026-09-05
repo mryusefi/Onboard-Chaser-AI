@@ -1,7 +1,7 @@
 import io
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -18,6 +18,7 @@ from app.schemas.schemas import (
     DocumentResponse,
     ReminderLogResponse,
     ReminderSendResponse,
+    OnboardingListResponse,
 )
 from app.services.onboarding_service import (
     create_onboarding_for_candidate,
@@ -26,10 +27,16 @@ from app.services.onboarding_service import (
     validate_candidate_access,
     compute_completion_percentage,
     update_document_status,
+    list_onboardings,
 )
 from app.services.email_service import send_invitation as send_email, is_email_configured
 from app.services.reminder_service import send_reminder, REMINDER_TYPE_MIDWAY
-from app.models.models import Onboarding, ReminderLog, InvitationEmailStatus as IES
+from app.models.models import (
+    Onboarding,
+    ReminderLog,
+    InvitationEmailStatus as IES,
+    OnboardingStatus,
+)
 from app.services.document_service import (
     upload_file_to_storage,
     get_document_for_upload,
@@ -37,6 +44,51 @@ from app.services.document_service import (
 from app.services import storage
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
+
+
+# ────────────────────────────────────────────────────────────────────────
+# US10 — HR dashboard: onboarding list
+# ────────────────────────────────────────────────────────────────────────
+# Registered BEFORE the parameterized /{...} routes (same path-shadowing
+# convention as /create-full documented in Key Decisions).
+@router.get("/", response_model=OnboardingListResponse)
+def list_onboardings_endpoint(
+    status: str | None = None,
+    needs_attention: bool | None = None,
+    search: str | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    HR dashboard list (US10) — every onboarding with candidate info,
+    aggregated document counts (single grouped query, no N+1), invitation
+    status, timestamps and the derived needs_attention flag (rule documented
+    in onboarding_service.list_onboardings).
+
+    Query parameters:
+      status          — pending | in_progress | completed
+      needs_attention — true / false (default: no filtering)
+      search          — case-insensitive substring on candidate name/email
+      page, page_size — offset/limit pagination (page_size <= 100)
+
+    Invalid status values are rejected with 422 (validated against the enum).
+    """
+    try:
+        return list_onboardings(
+            db,
+            status=status,
+            needs_attention=needs_attention,
+            search=search,
+            page=page,
+            page_size=page_size,
+        )
+    except ValueError:
+        valid = ", ".join(s.value for s in OnboardingStatus)
+        raise HTTPException(
+            status_code=422, detail=f"Invalid status '{status}'. Allowed: {valid}"
+        )
 
 
 @router.post("/magic-link", response_model=MagicLinkResponse)

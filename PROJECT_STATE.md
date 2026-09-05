@@ -9,20 +9,28 @@
 - GitHub: `https://github.com/mryusefi/Onboard-Chaser-AI.git`
 
 ## Current Git State
-- **Branch:** `feature/reminder-config` (US09; stacked on `feature/automated-reminders`/US08 — neither merged)
-- **Latest commit:** `84b8b56 chore: README for US09 (story table, US09 section, endpoints, config note, routes)`
-- **Status:** US08 + US09 committed on their feature branches; not pushed, not merged
-- **Tests:** 139 passing (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6, US08:31, US09:17)
+- **Branch:** `feature/hr-dashboard` (US10; stacked on US09 → US08 — none merged)
+- **Latest commit:** `124e8e3 chore: README for US10 (story table, US10 section, admin routes, endpoint, test count)`
+- **Status:** US08+US09+US10 committed on their feature branches; US08/US09 pushed; US10 push pending
+- **Tests:** 160 passing (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6, US08:31, US09:17, US10:21)
+- Frontend build verified (`npx vite build`, 1577 modules, exit 0)
 
 ## Completed User Stories (US01–US07)
 All merged to main via feature branches. Plane epic + sub-tasks for each marked Done.
 
-## Next Story: US10
-- **Epic:** US08–09 — DONE (Automated reminders + config)
-- **US08 status:** COMPLETE on `feature/automated-reminders` (12 commits)
-- **US09 status:** COMPLETE on `feature/reminder-config` (4 commits, stacked on US08)
-- **Next epic:** US10–11 — HR dashboard / candidate list / onboarding list / document detail view
-- Merge order when approved: US08 branch first, then US09 branch (stacked).
+## Next Story: US11
+- **Epic:** US08–10 — DONE (reminders, config, HR dashboard)
+- **US08 status:** COMPLETE on `feature/automated-reminders` (pushed)
+- **US09 status:** COMPLETE on `feature/reminder-config` (pushed)
+- **US10 status:** COMPLETE on `feature/hr-dashboard` (commit + push this session)
+- Merge order when approved: US08 → US09 → US10 (strictly stacked).
+- **US11 work:** extend `/admin/onboarding/:id`
+  (`frontend/src/pages/OnboardingDetailPage.jsx` — placeholder already shows
+  candidate + progress + ReminderHistory) with document-level detail:
+  per-document status/files, preview/download via `generate_presigned_url`,
+  and status controls reusing `update_document_status`. Backend needs an
+  HR-authenticated `GET /api/v1/onboarding/{onboarding_id}/detail` returning
+  full document rows (the US10 list endpoint deliberately returns counts only).
 
 ## US09 — What Was Built (branch `feature/reminder-config`)
 - Scope decision (documented in models.py + README): ONE global ReminderConfig
@@ -139,7 +147,7 @@ cd frontend && npm install && npm run dev
 ```bash
 cd "E:\Onboard Chaser AI/MVP_Project/backend"
 TESTING=1 python -m pytest tests/ -q
-# Expected: 139 passed (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6, US08:31, US09:17)
+# Expected: 160 passed (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6, US08:31, US09:17, US10:21)
 ```
 
 ## Work Convention (must follow)
@@ -160,14 +168,14 @@ After finishing a US:
 - Test count in "Run the tests" → update total
 - Don't rewrite unrelated parts
 
-## What Does NOT Exist Yet (post-09 gaps)
-- US10-11: HR dashboard / candidate list view / onboarding list / document detail view
+## What Does NOT Exist Yet (post-10 gaps)
+- US11: Onboarding/document detail view (entry point `/admin/onboarding/:id`
+  placeholder ready; backend detail endpoint with full document rows needed)
 - US12: AI document verification (out of scope)
 - No login UI (only API endpoints for register/login; frontend authFetch
   expects the HR JWT in localStorage.hr_token)
-- No admin shell / navigation from HomePage to admin pages
 - Docker runtime verification of celery-worker/celery-beat pending (daemon was
-  down during the US08/US09 sessions)
+  down during the US08–US10 sessions)
 
 ## Readme (master document)
 - README.md is comprehensive: architecture diagram, project structure, how to run (Docker + local), US01–US07 sections, full API table, config table, test instructions

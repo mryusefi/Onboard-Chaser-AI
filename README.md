@@ -86,7 +86,7 @@ MVP_Project/
     ├── index.html
     └── src/
         ├── main.jsx              # React entry, BrowserRouter
-        ├── App.jsx               # Routes: /, /onboard/:token, /admin/onboarding/new, /admin/settings/reminders
+        ├── App.jsx               # Routes: /, /onboard/:token, /admin/onboarding, /admin/onboarding/new, /admin/onboarding/:id, /admin/settings/reminders
         ├── index.css             # Tailwind + gradient helper
         └── pages/
             ├── HomePage.jsx              # Landing page
@@ -165,7 +165,7 @@ npm run dev
 ```bash
 cd backend
 TESTING=1 python -m pytest tests/ -v
-# Expected: 139 passed (US01: 12, US02: 11, US03: 18, US04: 12, US05: 14, US06: 17, US07: 6, US08: 31, US09: 17)
+# Expected: 160 passed (US01: 12, US02: 11, US03: 18, US04: 12, US05: 14, US06: 17, US07: 6, US08: 31, US09: 17, US10: 21)
 ```
 
 Tests use an in-memory SQLite database (StaticPool) via `tests/conftest.py`, so
@@ -190,7 +190,8 @@ feature branch per story.
 | US07  | Invitation email via Resend | ✅ Done (feature branch, pending merge) | `feature/invitation-email` | 6 |
 | US08  | Automated reminder system | ✅ Done (feature branch, pending merge) | `feature/automated-reminders` | 31 |
 | US09  | Reminder configuration (admin UI on global `ReminderConfig`) | ✅ Done (feature branch, pending merge) | `feature/reminder-config` (stacked on US08 branch) | 17 |
-| US10–11 | HR dashboard + document detail | ⏳ Backlog | — | — |
+| US10  | HR dashboard (onboarding list) | ✅ Done (feature branch, pending merge) | `feature/hr-dashboard` (stacked on US09 branch) | 21 |
+| US11  | Onboarding detail + document detail view | ⏳ Backlog (entry point: `/admin/onboarding/:id` placeholder) | — | — |
 | US12  | AI document verification | 🚫 Post-MVP (explicitly out of scope) | — | — |
 
 ### US01 — Secure Onboarding Portal
@@ -417,6 +418,53 @@ feature branch per story.
     `localStorage.hr_token` (the MVP has no login UI yet; paste the token
     from `POST /api/v1/auth/login`).
 
+### US10 — HR Dashboard (Onboarding List)
+- `GET /api/v1/onboarding/` (HR auth) — every onboarding with, per row:
+  candidate info (full_name, email, position), onboarding status, aggregated
+  document counts + `completion_percentage`, `invitation_email_status`,
+  `started_at`/`completed_at`, and a derived `needs_attention` flag.
+- **Efficiency**: document counts come from ONE grouped aggregate
+  (SUM + CASE over the documents join); the last reminder attempt from a
+  `row_number()` window subquery (tie-safe on `sent_at`, so the join can
+  never duplicate onboarding rows) — no per-row queries (no N+1).
+- **`needs_attention` rule** (documented in
+  `onboarding_service.list_onboardings`): flagged when status != completed
+  AND any of:
+  1. *expired* — `token_expires_at` is in the past;
+  2. *never invited* — `invitation_email_status == "not_sent"`;
+  3. *stalled* — completion_percentage == 0 with >24h elapsed since the
+     anchor (`invitation_sent_at`, falling back to `created_at`);
+  4. *reminder blocked* — the most recent reminder attempt FAILED, or was
+     SKIPPED because the reminder **cap** was reached. Routine hourly-scan
+     skips ("no reminder due", cooldown, disabled) deliberately do NOT flag,
+     otherwise nearly every onboarding would light up after the first scan.
+  Completed onboardings are never flagged.
+- Query parameters: `status` (pending|in_progress|completed — invalid values
+  → 422), `needs_attention` (true/false), `search` (case-insensitive
+  substring on candidate name/email), `page` / `page_size` (offset/limit
+  pagination, page_size ≤ 100). Response: `OnboardingListResponse` with
+  `items`, `total`, `page`, `page_size`.
+- Frontend:
+  - `src/pages/OnboardingDashboardPage.jsx` at `/admin/onboarding` — table
+    with color-coded status chips (same palette as the candidate portal),
+    progress bar (same style as OnboardingPortal's Progress Card),
+    invitation-status chips, red "Needs attention" badge, filter controls
+    (status dropdown, needs-attention toggle, debounced 400 ms search box),
+    pagination controls, and loading / empty / error states.
+  - `src/pages/OnboardingDetailPage.jsx` at `/admin/onboarding/:id` —
+    **placeholder** detail view (candidate + progress + ReminderHistory
+    component); US11 attaches document-level detail here.
+  - `src/components/AdminNav.jsx` — minimal shared nav across the admin
+    pages (see route structure below).
+
+### Admin route structure
+| Route | Purpose | Since |
+|-------|---------|-------|
+| `/admin/onboarding` | HR dashboard: all onboardings, filters, pagination (US10) | US10 |
+| `/admin/onboarding/new` | Create candidate + onboarding (US06/US07) | US06 |
+| `/admin/onboarding/:id` | Onboarding detail placeholder — US11 extends it (US10) | US10 |
+| `/admin/settings/reminders` | Global reminder configuration (US09) | US09 |
+
 ### API endpoint summary
 
 | Method | Path | Purpose |
@@ -433,6 +481,7 @@ feature branch per story.
 | POST | `/api/v1/onboarding/{onboarding_id}/send-reminder-now` | Manual reminder trigger — **HR auth** (US08) |
 | GET  | `/api/v1/settings/reminders` | Read global reminder config — **HR auth** (US09) |
 | PUT  | `/api/v1/settings/reminders` | Update global reminder config — **HR auth** (US09) |
+| GET  | `/api/v1/onboarding/` | HR dashboard list — filters `status`, `needs_attention`, `search`; `page`/`page_size` — **HR auth** (US10) |
 | POST | `/api/v1/onboarding/magic-link` | Generate secure portal link |
 | GET  | `/api/v1/onboarding/portal/{token}` | Validate token, open portal session |
 | GET  | `/api/v1/onboarding/document/{id}` | Document upload context |
