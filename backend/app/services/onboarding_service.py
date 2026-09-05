@@ -470,6 +470,10 @@ def list_onboardings(
     rows = query.all()
 
     # ── Derive per-item fields (needs_attention, completion %) ──────────
+    # NOTE: capture the filter up-front — the per-row flag below must NOT
+    # shadow this parameter name (classic bug: filtering on the last row's
+    # flag value instead of the requested filter).
+    attention_filter = needs_attention
     now = datetime.now(timezone.utc)
     items = []
     for onboarding, candidate, completed, total, last_rem, last_reason in rows:
@@ -531,9 +535,9 @@ def list_onboardings(
             }
         )
 
-    if needs_attention is True:
+    if attention_filter is True:
         items = [i for i in items if i["needs_attention"]]
-    elif needs_attention is False:
+    elif attention_filter is False:
         items = [i for i in items if not i["needs_attention"]]
 
     # ── Pagination (offset/limit, MVP-simple) ────────────────────────────
