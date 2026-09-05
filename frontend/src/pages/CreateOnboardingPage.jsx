@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FileText, Plus, Trash2, CheckCircle2, AlertCircle, Loader2, ArrowLeft, Mail } from 'lucide-react'
 import ReminderHistory from '../components/ReminderHistory'
+import AdminNav from '../components/AdminNav'
 
 const DEFAULT_DOCS = [
   { name: 'Government ID', description: '', instructions: 'Upload a clear photo/scan of your government-issued ID.', accepted_formats: 'PDF, JPG, PNG', required: true },
@@ -100,6 +101,7 @@ export default function CreateOnboardingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-10 px-4">
       <div className="max-w-2xl mx-auto">
+        <AdminNav />
         <button
           onClick={() => navigate('/')}
           className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 mb-4"

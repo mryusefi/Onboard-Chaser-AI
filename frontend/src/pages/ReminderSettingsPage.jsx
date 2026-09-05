@@ -4,6 +4,7 @@ import {
   ArrowLeft, Bell, Loader2, AlertCircle, CheckCircle2, Clock, Repeat, Ban, Timer,
 } from 'lucide-react'
 import { authFetch, MAGIC_TOKEN_EXPIRE_HOURS } from '../utils/api'
+import AdminNav from '../components/AdminNav'
 
 // US09 — HR settings for the global reminder configuration.
 // Inline validation mirrors the backend rules exactly:
@@ -153,6 +154,7 @@ export default function ReminderSettingsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-10 px-4">
       <div className="max-w-2xl mx-auto">
+        <AdminNav />
         <button
           onClick={() => navigate('/')}
           className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 mb-4"
