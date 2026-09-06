@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import {
-  ArrowLeft, Download, FileText, Loader2, XCircle, CheckCircle2, Undo2,
+  ArrowLeft, Download, FileText, Loader2,
 } from 'lucide-react'
 import Topbar from '../components/Topbar'
 import Card from '../components/ui/Card'
@@ -11,70 +11,15 @@ import ProgressBar from '../components/ui/ProgressBar'
 import Modal from '../components/ui/Modal'
 import DocumentRow from '../components/DocumentRow'
 import ChaseTrail from '../components/ChaseTrail'
-import { fetchOnboardingDetail, fetchAccessUrl, updateVerification, fetchReminderHistory } from '../api/client'
+import { fetchOnboardingDetail, fetchAccessUrl, fetchReminderHistory } from '../api/client'
 import { useToast } from '../context/ToastContext'
 import { formatDate, formatDateTime } from '../utils/format'
 
 // US12-frontend: powered by GET /onboarding/{id}/detail (US11) +
 // /documents/{id}/access-url for preview/download + PATCH verification +
 // /onboarding/{id}/reminders rendered through the kit's ChaseTrail.
-
-function DocumentVerificationControls({ doc, onUpdated }) {
-  const { showToast } = useToast()
-  const [busy, setBusy] = useState(false)
-  const [note, setNote] = useState('')
-  const [showNote, setShowNote] = useState(false)
-
-  async function setStatus(status) {
-    setBusy(true)
-    try {
-      const updated = await updateVerification(doc.id, status, note.trim() || undefined)
-      showToast(`Marked ${status}.`)
-      onUpdated(updated)
-      setShowNote(false)
-      setNote('')
-    } catch (err) {
-      showToast(err.message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const canVerify = doc.status === 'uploaded' || doc.status === 'completed'
-
-  return (
-    <div className="flex items-center gap-2">
-      {canVerify && doc.verification_status !== 'verified' && (
-        <Button size="sm" variant="secondary" disabled={busy} onClick={() => setStatus('verified')}>
-          <CheckCircle2 className="mr-1.5 h-3.5 w-3.5 text-success" /> Verify
-        </Button>
-      )}
-      {canVerify && doc.verification_status !== 'rejected' && (
-        <Button size="sm" variant="secondary" disabled={busy} onClick={() => setShowNote((v) => !v)}>
-          <XCircle className="mr-1.5 h-3.5 w-3.5 text-danger" /> Reject
-        </Button>
-      )}
-      {doc.verification_status !== 'unverified' && (
-        <Button size="sm" variant="ghost" disabled={busy} title="Reset verification" onClick={() => setStatus('unverified')}>
-          <Undo2 className="h-3.5 w-3.5" />
-        </Button>
-      )}
-      {showNote && (
-        <div className="flex w-full items-center gap-2 pt-2">
-          <input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Rejection reason (optional)…"
-            className="h-9 flex-1 rounded-lg border border-border bg-surface px-3 text-[13px] text-ink focus:border-brand focus:outline-none"
-          />
-          <Button size="sm" variant="danger" disabled={busy} onClick={() => setStatus('rejected')}>
-            Confirm
-          </Button>
-        </div>
-      )}
-    </div>
-  )
-}
+// Verification controls live inside DocumentRow (single implementation);
+// this page only wires onPreview/onDownload/onVerified.
 
 export default function CandidateDetail() {
   const { id } = useParams()
@@ -249,8 +194,7 @@ export default function CandidateDetail() {
                 doc={doc}
                 variant="hr"
                 onPreview={openPreview}
-                onDownload={handleDownload}
-                onVerification={applyVerificationUpdate}
+                onVerified={applyVerificationUpdate}
               />
             ))}
           </div>
