@@ -90,7 +90,8 @@ export const createFullOnboarding = (payload) =>
   apiFetch('/onboarding/create-full', { method: 'POST', body: JSON.stringify(payload) })
 
 // US01: fresh magic link for manual copy/share (the create-full response
-// does not include the token; this generates one on demand).
+// does not include the token; this generates one on demand). Returns
+// { magic_link, expires_at }.
 export const generateMagicLink = (candidateId) =>
   apiFetch('/onboarding/magic-link', {
     method: 'POST',
