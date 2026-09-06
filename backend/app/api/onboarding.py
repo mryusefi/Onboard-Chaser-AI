@@ -19,6 +19,7 @@ from app.schemas.schemas import (
     ReminderLogResponse,
     ReminderSendResponse,
     OnboardingListResponse,
+    OnboardingDetailResponse,
 )
 from app.services.onboarding_service import (
     create_onboarding_for_candidate,
@@ -31,6 +32,7 @@ from app.services.onboarding_service import (
 )
 from app.services.email_service import send_invitation as send_email, is_email_configured
 from app.services.reminder_service import send_reminder, REMINDER_TYPE_MIDWAY
+from app.services.document_service import get_onboarding_detail
 from app.models.models import (
     Onboarding,
     ReminderLog,
@@ -397,3 +399,29 @@ def send_reminder_now(
         reason=log.reason,
         sent_at=log.sent_at,
     )
+
+
+# ────────────────────────────────────────────────────────────────────────
+# US11 — Onboarding detail (full documents incl. verification state)
+# ────────────────────────────────────────────────────────────────────────
+@router.get("/{onboarding_id}/detail", response_model=OnboardingDetailResponse)
+def get_onboarding_detail_endpoint(
+    onboarding_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Full detail for the HR detail page (US11, HR auth): candidate info
+    (incl. phone), onboarding status/timestamps, invitation status, and the
+    complete document list with file metadata and manual-verification state
+    (verification itself is HR-driven; AI verification is US12, out of MVP
+    scope). 404 for unknown onboarding_id / malformed UUID (404 for parity
+    with the other detail lookups; the UUID check mirrors
+    _get_onboarding_or_404 but the service raises the same ValueError).
+    """
+    try:
+        return get_onboarding_detail(db, onboarding_id)
+    except ValueError as exc:
+        if str(exc) == "onboarding_not_found":
+            raise HTTPException(status_code=404, detail="Onboarding not found")
+        raise HTTPException(status_code=400, detail=str(exc))

@@ -237,3 +237,84 @@ class OnboardingListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+# --- US11: Onboarding detail + document verification ---
+class DocumentVerificationInfo(BaseModel):
+    """Verification state of one document (US11, manual HR verification)."""
+    status: str
+    note: Optional[str] = None
+    verified_at: Optional[datetime] = None
+    verified_by: Optional[UUID] = None
+
+
+class DocumentDetailResponse(BaseModel):
+    """Full document row on the HR detail page (US11)."""
+    id: UUID
+    name: str
+    description: Optional[str] = None
+    instructions: Optional[str] = None
+    accepted_formats: Optional[str] = None
+    required: bool
+    status: str
+    file_name: Optional[str] = None
+    file_size: Optional[str] = None
+    file_mime_type: Optional[str] = None
+    uploaded_at: Optional[datetime] = None
+    verification: DocumentVerificationInfo
+
+
+class CandidateDetailResponse(BaseModel):
+    """Candidate info on the HR detail page (US11) — includes phone."""
+    full_name: str
+    email: str
+    phone: Optional[str] = None
+    position: Optional[str] = None
+
+
+class OnboardingDetailResponse(BaseModel):
+    """
+    GET /api/v1/onboarding/{onboarding_id}/detail (US11): full candidate +
+    onboarding + documents with verification state.
+    """
+    onboarding_id: UUID
+    candidate: CandidateDetailResponse
+    status: str
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    invitation_email_status: str
+    invitation_sent_at: Optional[datetime] = None
+    documents: List[DocumentDetailResponse]
+
+
+class DocumentAccessUrlResponse(BaseModel):
+    """
+    GET /api/v1/documents/{document_id}/access-url (US11): a SHORT-LIVED
+    signed URL (R2 presigned GET, or the local signed-URL fallback) usable
+    directly by the browser. No decrypted bytes ever flow through this
+    JSON endpoint.
+    """
+    document_id: UUID
+    file_name: Optional[str] = None
+    file_mime_type: Optional[str] = None
+    access_url: str
+    expires_in: int
+    storage_backend: str
+
+
+class DocumentVerificationUpdate(BaseModel):
+    """Payload for PATCH /api/v1/documents/{document_id}/verification (US11)."""
+    verification_status: str
+    verification_note: Optional[str] = None
+
+
+class DocumentVerificationResponse(BaseModel):
+    """Updated verification state returned by the PATCH endpoint (US11)."""
+    id: UUID
+    name: str
+    status: str
+    verification_status: str
+    verification_note: Optional[str] = None
+    verified_at: Optional[datetime] = None
+    verified_by: Optional[UUID] = None

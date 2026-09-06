@@ -124,6 +124,59 @@ def generate_presigned_url(key: str, expires_in: int = 900) -> str:
     )
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# US11 — Backend-agnostic short-lived access URLs
+# ═══════════════════════════════════════════════════════════════════════
+# Preview/download must behave IDENTICALLY regardless of storage backend:
+#   - R2 path    → generate_presigned_url() (S3-presigned GET, expires)
+#   - local path → an equivalent SHORT-LIVED SIGNED URL. The frontend never
+#                  talks to the filesystem, so the local fallback serves the
+#                  decrypted bytes through a signed API route instead. The
+#                  token is a signed JWT (same SECRET_KEY/HMAC-SHA256 scheme
+#                  as the magic-link tokens) with an `exp` claim, scoped to
+#                  one document; the route serving it (document_service.
+#                  serve_document_bytes) verifies signature + expiry before
+#                  streaming.
+LOCAL_ACCESS_TOKEN_TYPE = "doc-access"
+
+
+def generate_local_access_url(document_id: str, expires_in: int = 600) -> str:
+    """
+    Local-fallback equivalent of an R2 presigned GET URL: a short-lived
+    signed API URL. `expires_in` seconds, mirrored to the JWT `exp` claim so
+    the lifetime matches R2 presigned behavior.
+    """
+    import uuid as uuid_module
+    from datetime import datetime, timedelta, timezone
+    from jose import jwt
+
+    expire = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+    token = jwt.encode(
+        {
+            "sub": str(document_id),
+            "type": LOCAL_ACCESS_TOKEN_TYPE,
+            "jti": uuid_module.uuid4().hex,
+            "exp": expire,
+        },
+        settings.SECRET_KEY,
+        algorithm="HS256",
+    )
+    return f"{settings.API_V1_PREFIX}/documents/{document_id}/file?token={token}"
+
+
+def generate_document_access_url(key: str, document_id: str, expires_in: int = 600) -> str:
+    """
+    Single entry point for US11 access URLs (backend-agnostic):
+      - R2 configured → presigned GET URL for the private object
+      - otherwise     → local signed-URL fallback (see generate_local_access_url)
+    `expires_in` is in seconds (default 600 = 10 min — short, per the
+    sensitivity of the data: IDs, tax forms, etc.).
+    """
+    if is_r2_configured():
+        return generate_presigned_url(key, expires_in=expires_in)
+    return generate_local_access_url(document_id, expires_in=expires_in)
+
+
 def local_fallback_dir() -> str:
     return os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),

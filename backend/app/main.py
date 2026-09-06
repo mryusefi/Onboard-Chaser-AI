@@ -9,6 +9,8 @@ from app.core.database import engine, Base
 from app.api import auth, onboarding, candidates
 # Aliased: `from app.api import settings` would shadow app.core.config.settings above.
 from app.api.settings import router as settings_router
+# US11 — documents router (access-url, verification, local file streaming).
+from app.api.documents import router as documents_router
 
 
 @asynccontextmanager
@@ -40,6 +42,7 @@ app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
 app.include_router(onboarding.router, prefix=settings.API_V1_PREFIX)
 app.include_router(candidates.router, prefix=settings.API_V1_PREFIX)
 app.include_router(settings_router, prefix=settings.API_V1_PREFIX)
+app.include_router(documents_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/health")

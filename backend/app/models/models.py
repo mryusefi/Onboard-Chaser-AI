@@ -24,6 +24,20 @@ class DocumentStatus(str, enum.Enum):
     MISSING = "missing"
 
 
+class DocumentVerificationStatus(str, enum.Enum):
+    """
+    US11 — HR-driven manual verification of an uploaded document.
+
+    This is MANUAL verification only (an HR coordinator eyeballs the file via
+    the preview/download access URL and marks it verified/rejected). AI-assisted
+    document verification is US12 and remains out of scope for this MVP,
+    unchanged from the original project scope statement.
+    """
+    UNVERIFIED = "unverified"
+    VERIFIED = "verified"
+    REJECTED = "rejected"
+
+
 class InvitationEmailStatus(str, enum.Enum):
     """Delivery tracking for the candidate invitation email (US07)."""
     NOT_SENT = "not_sent"
@@ -151,7 +165,17 @@ class Document(Base):
     uploaded_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+    # US11 — manual HR verification (see DocumentVerificationStatus docstring:
+    # manual only; AI verification is US12, out of MVP scope).
+    verification_status = Column(
+        SAEnum(DocumentVerificationStatus), default=DocumentVerificationStatus.UNVERIFIED
+    )
+    verification_note = Column(Text, nullable=True)  # e.g. rejection reason
+    verified_at = Column(DateTime(timezone=True), nullable=True)
+    verified_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
     onboarding = relationship("Onboarding", back_populates="documents")
+    verifier = relationship("User")
 
 
 class ReminderLog(Base):
