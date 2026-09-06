@@ -240,16 +240,13 @@ class OnboardingListResponse(BaseModel):
 
 
 # --- US11: Onboarding detail + document verification ---
-class DocumentVerificationInfo(BaseModel):
-    """Verification state of one document (US11, manual HR verification)."""
-    status: str
-    note: Optional[str] = None
-    verified_at: Optional[datetime] = None
-    verified_by: Optional[UUID] = None
-
-
 class DocumentDetailResponse(BaseModel):
-    """Full document row on the HR detail page (US11)."""
+    """
+    Full document row on the HR detail page (US11).
+
+    Verification fields are flat (matching the service output and the
+    Document model columns); the frontend chips read verification_status.
+    """
     id: UUID
     name: str
     description: Optional[str] = None
@@ -261,7 +258,10 @@ class DocumentDetailResponse(BaseModel):
     file_size: Optional[str] = None
     file_mime_type: Optional[str] = None
     uploaded_at: Optional[datetime] = None
-    verification: DocumentVerificationInfo
+    verification_status: str
+    verification_note: Optional[str] = None
+    verified_at: Optional[datetime] = None
+    verified_by: Optional[UUID] = None
 
 
 class CandidateDetailResponse(BaseModel):
