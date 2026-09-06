@@ -89,6 +89,14 @@ export const fetchReminderHistory = (onboardingId) =>
 export const createFullOnboarding = (payload) =>
   apiFetch('/onboarding/create-full', { method: 'POST', body: JSON.stringify(payload) })
 
+// US01: fresh magic link for manual copy/share (the create-full response
+// does not include the token; this generates one on demand).
+export const generateMagicLink = (candidateId) =>
+  apiFetch('/onboarding/magic-link', {
+    method: 'POST',
+    body: JSON.stringify({ candidate_id: candidateId }),
+  })
+
 export const sendInvitation = (onboardingId) =>
   apiFetch(`/onboarding/${onboardingId}/send-invitation`, { method: 'POST' })
 

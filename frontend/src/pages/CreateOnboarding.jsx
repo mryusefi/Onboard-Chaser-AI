@@ -7,7 +7,7 @@ import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
 import { useOnboarding } from '../context/OnboardingContext'
 import { useToast } from '../context/ToastContext'
-import { sendInvitation } from '../api/client'
+import { generateMagicLink, sendInvitation } from '../api/client'
 
 // US12-frontend: real create flow — POST /onboarding/create-full (US06)
 // creates candidate + onboarding + seeded default documents in one call,
@@ -65,24 +65,18 @@ export default function CreateOnboarding() {
     }
   }
 
-  const portalLink = created ? `${window.location.origin}/onboard/link` : ''
-  const magicToken = created?.onboarding?.magic_token || created?.onboarding?.magic_link
-  // The create-full response exposes the onboarding but not always the magic
-  // link (US06); the invite email carries the real link. Copy/share uses the
-  // magic-link endpoint output when available, otherwise invites by email.
-
-  function handleCopyLink() {
+  async function handleCopyLink() {
     if (!created) return
-    const link = typeof magicToken === 'string' && magicToken.startsWith('http')
-      ? magicToken
-      : null
-    if (!link) {
-      showToast('Use "Send invitation" — the secure link is emailed to the candidate.')
-      return
+    try {
+      // create-full does not return the token; request a fresh magic link
+      // (US01) so HR can copy/share it directly.
+      const data = await generateMagicLink(created.candidate.id)
+      navigator.clipboard?.writeText(data.magic_link).catch(() => {})
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      showToast(err.message)
     }
-    navigator.clipboard?.writeText(link).catch(() => {})
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
   }
 
   function handleStartAnother() {
