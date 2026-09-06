@@ -165,7 +165,7 @@ npm run dev
 ```bash
 cd backend
 TESTING=1 python -m pytest tests/ -v
-# Expected: 160 passed (US01: 12, US02: 11, US03: 18, US04: 12, US05: 14, US06: 17, US07: 6, US08: 31, US09: 17, US10: 21)
+# Expected: 178 passed (US01: 12, US02: 11, US03: 18, US04: 12, US05: 14, US06: 17, US07: 6, US08: 31, US09: 17, US10: 21, US11: 18)
 ```
 
 Tests use an in-memory SQLite database (StaticPool) via `tests/conftest.py`, so
@@ -191,7 +191,7 @@ feature branch per story.
 | US08  | Automated reminder system | ✅ Done (feature branch, pending merge) | `feature/automated-reminders` | 31 |
 | US09  | Reminder configuration (admin UI on global `ReminderConfig`) | ✅ Done (feature branch, pending merge) | `feature/reminder-config` (stacked on US08 branch) | 17 |
 | US10  | HR dashboard (onboarding list) | ✅ Done (feature branch, pending merge) | `feature/hr-dashboard` (stacked on US09 branch) | 21 |
-| US11  | Onboarding detail + document detail view | ⏳ Backlog (entry point: `/admin/onboarding/:id` placeholder) | — | — |
+| US11  | Candidate detail & document verification | ✅ Done (feature branch, pending merge) | `feature/candidate-detail-verification` (stacked on US10) | 18 |
 | US12  | AI document verification | 🚫 Post-MVP (explicitly out of scope) | — | — |
 
 ### US01 — Secure Onboarding Portal
@@ -462,8 +462,52 @@ feature branch per story.
 |-------|---------|-------|
 | `/admin/onboarding` | HR dashboard: all onboardings, filters, pagination (US10) | US10 |
 | `/admin/onboarding/new` | Create candidate + onboarding (US06/US07) | US06 |
-| `/admin/onboarding/:id` | Onboarding detail placeholder — US11 extends it (US10) | US10 |
+| `/admin/onboarding/:id` | Candidate detail + document preview/download + manual verification (US11) | US11 |
 | `/admin/settings/reminders` | Global reminder configuration (US09) | US09 |
+
+### US11 — Candidate Detail & Document Verification
+- **Scope note:** document verification here is **manual HR verification**
+  only — HR previews/downloads the file and marks it verified/rejected.
+  AI-assisted verification is **US12** and remains out of scope for this
+  MVP, unchanged from the original project scope statement.
+- `GET /api/v1/onboarding/{onboarding_id}/detail` (HR auth): full candidate
+  info (incl. phone), onboarding status/timestamps, invitation status, and
+  ALL documents with file metadata (`file_name`, `file_size`,
+  `file_mime_type`, `uploaded_at`, `required`) and verification state.
+  404 for unknown onboarding.
+- `GET /api/v1/documents/{document_id}/access-url` (HR auth): returns a
+  **short-lived signed URL** (default 600 s = 10 min) usable directly by the
+  browser for inline preview or download. Decrypted file bytes NEVER flow
+  through this JSON endpoint. Backend-agnostic via
+  `storage.generate_document_access_url()`:
+  - R2 configured → `generate_presigned_url()` (private-bucket presigned GET);
+  - local fallback → a signed JWT URL (`/api/v1/documents/{id}/file?token=…`)
+    with the same `exp` semantics, validated (signature + expiry + document
+    match) by `GET /api/v1/documents/{document_id}/file` which decrypts on
+    the fly and streams inline (PDF/image) or as an attachment. This route is
+    intentionally NOT behind the HR JWT: possession of a valid unexpired
+    token IS the authorization, exactly like an R2 presigned URL — and the
+    token is only ever issued through the HR-authenticated access-url
+    endpoint. 404 when the document has no uploaded file.
+- `Document` model extended (models.py, `DocumentVerificationStatus` enum
+  defined like `DocumentStatus`/`InvitationEmailStatus`):
+  `verification_status` (`unverified | verified | rejected`, default
+  `unverified` for existing and new documents), `verification_note`
+  (e.g. rejection reason), `verified_at`, `verified_by` (FK → users).
+- `PATCH /api/v1/documents/{document_id}/verification` (HR auth): accepts
+  `{verification_status, verification_note?}`; records `verified_by` from
+  the authenticated HR user and `verified_at=now()`. 422 for invalid enum
+  values; **409** when the document has no uploaded file (status not
+  uploaded/completed — nothing to verify). Re-verification (flip between
+  states, reset to unverified) is allowed for HR second looks.
+- Frontend (`/admin/onboarding/:id`, completes the US10 placeholder):
+  candidate header with chips, document table (name, required/optional
+  badge, upload-status chip, file name/size, uploaded_at, verification chip
+  in new colors), Preview (modal: `<iframe>` for PDF, `<img>` for images)
+  and Download buttons — each fetching a **fresh** access URL per click
+  (never reusing one past expiry), Verify/Reject/Reset controls with a
+  rejection-note field and per-row loading/error state. ReminderHistory
+  from US10 stays embedded below.
 
 ### API endpoint summary
 
@@ -482,6 +526,10 @@ feature branch per story.
 | GET  | `/api/v1/settings/reminders` | Read global reminder config — **HR auth** (US09) |
 | PUT  | `/api/v1/settings/reminders` | Update global reminder config — **HR auth** (US09) |
 | GET  | `/api/v1/onboarding/` | HR dashboard list — filters `status`, `needs_attention`, `search`; `page`/`page_size` — **HR auth** (US10) |
+| GET  | `/api/v1/onboarding/{onboarding_id}/detail` | Full candidate + documents incl. verification state — **HR auth** (US11) |
+| GET  | `/api/v1/documents/{document_id}/access-url` | Short-lived signed URL (10 min) for preview/download — **HR auth** (US11) |
+| GET  | `/api/v1/documents/{document_id}/file?token=` | Stream decrypted bytes (signed-token auth, local fallback only) (US11) |
+| PATCH | `/api/v1/documents/{document_id}/verification` | Manual HR verification (verify/reject/reset) — **HR auth** (US11) |
 | POST | `/api/v1/onboarding/magic-link` | Generate secure portal link |
 | GET  | `/api/v1/onboarding/portal/{token}` | Validate token, open portal session |
 | GET  | `/api/v1/onboarding/document/{id}` | Document upload context |
@@ -541,7 +589,17 @@ onboardings (id UUID PK, candidate_id FK UNIQUE, status ENUM(pending|in_progress
   ▼
 documents (id UUID PK, onboarding_id FK, name, description, instructions,
            required BOOL, accepted_formats, status ENUM(pending|uploaded|completed|missing),
-           file_key, file_name, uploaded_at, created_at)
+           file_key, file_name, uploaded_at, created_at,
+           verification_status ENUM(unverified|verified|rejected) DEFAULT unverified,  -- US11
+           verification_note, verified_at, verified_by FK→users)                       -- US11
+  │
+  │ 1 ── N
+  ▼
+reminder_logs (id UUID PK, onboarding_id FK, sent_at, status ENUM(sent|failed|skipped),
+               reminder_type, reason)                                                   -- US08
+reminder_configs (id INT PK=1 singleton, reminder_frequency_hours,                       -- US09
+                  first_reminder_after_hours, final_reminder_before_expiry_hours,
+                  max_reminders_per_onboarding, is_enabled, updated_at)
 ```
 
 Tables are auto-created at startup via `Base.metadata.create_all()` (dev mode).
