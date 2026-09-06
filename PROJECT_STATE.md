@@ -9,28 +9,52 @@
 - GitHub: `https://github.com/mryusefi/Onboard-Chaser-AI.git`
 
 ## Current Git State
-- **Branch:** `feature/hr-dashboard` (US10; stacked on US09 → US08 — none merged)
-- **Latest commit:** `124e8e3 chore: README for US10 (story table, US10 section, admin routes, endpoint, test count)`
-- **Status:** US08+US09+US10 committed on their feature branches; US08/US09 pushed; US10 push pending
-- **Tests:** 160 passing (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6, US08:31, US09:17, US10:21)
-- Frontend build verified (`npx vite build`, 1577 modules, exit 0)
+- **Branch:** `feature/candidate-detail-verification` (US11; stacked on US10 → US09 → US08 — none merged as of this story)
+- **Latest commit:** `89c7945 chore: README for US11 (story table, US11 section, endpoints, DB model, manual-verification scope note)`
+- **Status:** US10 merged to main by user; US11 committed on its branch; push pending
+- **Tests:** 178 passing (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6, US08:31, US09:17, US10:21, US11:18)
+- Frontend build verified (`npx vite build`, exit 0)
 
 ## Completed User Stories (US01–US07)
 All merged to main via feature branches. Plane epic + sub-tasks for each marked Done.
 
-## Next Story: US11
-- **Epic:** US08–10 — DONE (reminders, config, HR dashboard)
-- **US08 status:** COMPLETE on `feature/automated-reminders` (pushed)
-- **US09 status:** COMPLETE on `feature/reminder-config` (pushed)
-- **US10 status:** COMPLETE on `feature/hr-dashboard` (commit + push this session)
-- Merge order when approved: US08 → US09 → US10 (strictly stacked).
-- **US11 work:** extend `/admin/onboarding/:id`
-  (`frontend/src/pages/OnboardingDetailPage.jsx` — placeholder already shows
-  candidate + progress + ReminderHistory) with document-level detail:
-  per-document status/files, preview/download via `generate_presigned_url`,
-  and status controls reusing `update_document_status`. Backend needs an
-  HR-authenticated `GET /api/v1/onboarding/{onboarding_id}/detail` returning
-  full document rows (the US10 list endpoint deliberately returns counts only).
+## Next Story: US12 (Post-MVP — explicitly out of scope)
+- **Epic:** US08–11 — DONE (reminders, config, dashboard, detail+verification).
+  The "Basic HR Dashboard" epic is fully complete with US11.
+- **US08:** COMPLETE on `feature/automated-reminders` (merged via main)
+- **US09:** COMPLETE on `feature/reminder-config` (pushed)
+- **US10:** COMPLETE on `feature/hr-dashboard` (merged via `ba6d13c`)
+- **US11:** COMPLETE on `feature/candidate-detail-verification` (this branch)
+- US12 (AI document verification) remains POST-MVP / out of scope — US11
+  deliberately implements MANUAL HR verification only.
+
+## US11 — What Was Built (branch `feature/candidate-detail-verification`)
+- `DocumentVerificationStatus` enum + Document fields: verification_status
+  (default unverified), verification_note, verified_at, verified_by FK→users.
+- `storage.py`: backend-agnostic `generate_document_access_url()` — R2
+  presigned GET when configured, else `generate_local_access_url()`: a
+  short-lived signed JWT URL (`/documents/{id}/file?token=…`, exp mirrored,
+  default 600 s) whose semantics mirror R2 presigned URLs.
+- `document_service.py`: get_onboarding_detail() (candidate+onboarding+all
+  documents w/ file metadata + verification), get_document_access_url()
+  (404 'no_file_uploaded' when no file), serve_document_bytes() (token
+  validation incl. type+exp, decrypt on the fly), update_verification()
+  (422 invalid enum; 409 when document not uploaded/completed).
+- API (HR auth): GET /onboarding/{id}/detail (404 unknown);
+  GET /documents/{id}/access-url (10-min signed URL, no bytes in JSON);
+  PATCH /documents/{id}/verification (records verified_by/at);
+  GET /documents/{id}/file?token= (local streaming — intentionally NOT
+  behind HR JWT: signed-token possession IS the authorization, like R2
+  presigned URLs; token only issued via the HR-authenticated access-url).
+- Frontend: completed `/admin/onboarding/:id` (US10 placeholder) — candidate
+  header w/ chips, document rows (required badge, status + verification
+  chips w/ new colors, file meta), Preview modal (iframe for PDF / img for
+  images) and Download, each fetching a FRESH access URL per click;
+  Verify/Reject/Reset with rejection-note field, per-row error state;
+  ReminderHistory (US10) kept in place; manual-verification scope note shown.
+- Tests: tests/test_us11.py — 18 tests (detail data + 404; access-url
+  auth/404/expiry/R2-vs-local dispatch; verification auth/verify/reject+note/
+  invalid enum 422/no-file 409/re-verify; local token scoping + expiry).
 
 ## US09 — What Was Built (branch `feature/reminder-config`)
 - Scope decision (documented in models.py + README): ONE global ReminderConfig
@@ -147,7 +171,7 @@ cd frontend && npm install && npm run dev
 ```bash
 cd "E:\Onboard Chaser AI/MVP_Project/backend"
 TESTING=1 python -m pytest tests/ -q
-# Expected: 160 passed (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6, US08:31, US09:17, US10:21)
+# Expected: 178 passed (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6, US08:31, US09:17, US10:21, US11:18)
 ```
 
 ## Work Convention (must follow)
@@ -168,14 +192,14 @@ After finishing a US:
 - Test count in "Run the tests" → update total
 - Don't rewrite unrelated parts
 
-## What Does NOT Exist Yet (post-10 gaps)
-- US11: Onboarding/document detail view (entry point `/admin/onboarding/:id`
-  placeholder ready; backend detail endpoint with full document rows needed)
-- US12: AI document verification (out of scope)
+## What Does NOT Exist Yet (post-11 gaps)
+- US12: AI document verification (POST-MVP, explicitly out of scope — US11 is manual HR verification)
 - No login UI (only API endpoints for register/login; frontend authFetch
   expects the HR JWT in localStorage.hr_token)
 - Docker runtime verification of celery-worker/celery-beat pending (daemon was
-  down during the US08–US10 sessions)
+  down during the US08–US11 sessions)
+- Real-R2 runtime verification of access URLs pending (local signed-URL path
+  is fully tested; R2 presigned path covered via mocked boto3)
 
 ## Readme (master document)
 - README.md is comprehensive: architecture diagram, project structure, how to run (Docker + local), US01–US07 sections, full API table, config table, test instructions
