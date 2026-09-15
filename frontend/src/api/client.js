@@ -31,6 +31,18 @@ async function parseBody(resp) {
   }
 }
 
+// ── Global 401 handling (maintenance pass: Bugs 2+4 shared root cause) ──
+// An expired/stale JWT (60-min lifetime) previously failed silently per
+// call site: the dashboard showed "Not authenticated" and the reminders
+// toggle flip-flopped with no way out. Instead, ANY 401 from any HR call
+// now clears the token and notifies the AuthContext, which flips the app
+// to the login screen. Register via setUnauthorizedHandler().
+let unauthorizedHandler = null
+
+export function setUnauthorizedHandler(fn) {
+  unauthorizedHandler = typeof fn === 'function' ? fn : null
+}
+
 export async function apiFetch(path, options = {}) {
   const token = getToken()
   const headers = { ...(options.headers || {}) }
@@ -43,6 +55,13 @@ export async function apiFetch(path, options = {}) {
   if (!options.raw) {
     body = await parseBody(resp)
     if (!resp.ok) {
+      if (resp.status === 401 && token && !path.startsWith('/auth/login')) {
+        // Only an authenticated call returning 401 means the session is
+        // stale — a 401 from login itself is a wrong-password error and is
+        // handled inline by the Login page.
+        logout() // clear the stale token so the guard/redirect takes effect
+        if (unauthorizedHandler) unauthorizedHandler()
+      }
       const msg =
         (body && (typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail))) ||
         `Request failed (${resp.status})`

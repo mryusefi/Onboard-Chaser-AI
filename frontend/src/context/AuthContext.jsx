@@ -2,9 +2,14 @@
 // The JWT lives in localStorage ('hr_token', same key the previous
 // per-story pages used) so a page refresh keeps you logged in. The route
 // guard redirects /dashboard, /onboardings, etc. to /login when absent.
+//
+// Maintenance pass (Bugs 2+4): registers a global 401 handler with the API
+// client — when any HR call comes back unauthorized (expired/stale JWT),
+// the session is cleared and the login screen shows a "session expired"
+// hint instead of pages silently failing.
 
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
-import { getToken } from '../api/client'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { getToken, setUnauthorizedHandler } from '../api/client'
 
 const AuthContext = createContext(null)
 
@@ -12,6 +17,7 @@ export function AuthProvider({ children }) {
   // `token` is only used as a boolean signal; the actual string lives in
   // localStorage via the api client (single source of truth).
   const [token, setTokenState] = useState(() => !!getToken())
+  const [sessionExpired, setSessionExpired] = useState(false)
   const [user, setUser] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('hr_user') || 'null')
@@ -20,8 +26,24 @@ export function AuthProvider({ children }) {
     }
   })
 
+  // Global 401 -> drop the session so RequireAuth bounces to /login.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setTokenState(false)
+      setSessionExpired(true)
+      try {
+        localStorage.removeItem('hr_user')
+      } catch {
+        /* ignore */
+      }
+      setUser(null)
+    })
+    return () => setUnauthorizedHandler(null)
+  }, [])
+
   const handleLogin = useCallback((loginResponse) => {
     setTokenState(true)
+    setSessionExpired(false)
     try {
       // Decode JWT payload (no verification — UI display only).
       const payload = JSON.parse(atob(loginResponse.access_token.split('.')[1]))
@@ -39,13 +61,21 @@ export function AuthProvider({ children }) {
 
   const handleLogout = useCallback(() => {
     setTokenState(false)
+    setSessionExpired(false)
     localStorage.removeItem('hr_user')
     setUser(null)
   }, [])
 
   const value = useMemo(
-    () => ({ isAuthenticated: token, user, login: handleLogin, logout: handleLogout }),
-    [token, user, handleLogin, handleLogout]
+    () => ({
+      isAuthenticated: token,
+      user,
+      sessionExpired,
+      clearSessionExpired: () => setSessionExpired(false),
+      login: handleLogin,
+      logout: handleLogout,
+    }),
+    [token, user, sessionExpired, handleLogin, handleLogout]
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

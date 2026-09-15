@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
   const navigate = useNavigate()
-  const { login: loginSession } = useAuth()
+  const { login: loginSession, sessionExpired, clearSessionExpired } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -23,6 +23,7 @@ export default function Login() {
     e.preventDefault()
     setBusy(true)
     setError(null)
+    clearSessionExpired()
     try {
       const data = await apiLogin(email, password)
       loginSession(data)
@@ -46,6 +47,13 @@ export default function Login() {
       <Card className="w-full max-w-sm p-7">
         <h1 className="font-display text-xl font-semibold text-ink">HR sign in</h1>
         <p className="mt-1 text-sm text-ink-soft">Manage onboardings, documents and reminders.</p>
+
+        {sessionExpired && (
+          <div className="mt-4 flex items-start gap-2 rounded-xl border border-warning/25 bg-warning-soft px-3.5 py-3 text-[13px] text-warning">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            Your session expired — please sign in again.
+          </div>
+        )}
 
         {error && (
           <div className="mt-4 flex items-start gap-2 rounded-xl border border-danger/25 bg-danger-soft px-3.5 py-3 text-[13px] text-danger">
