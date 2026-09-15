@@ -2,6 +2,7 @@ import io
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -138,6 +139,13 @@ def create_full_onboarding_endpoint(
         if msg == "no_hr_user":
             raise HTTPException(status_code=400, detail="No HR user exists yet. Register first.")
         raise HTTPException(status_code=400, detail=msg)
+    except IntegrityError:
+        # A unique constraint still fired (e.g. two concurrent submits of the
+        # same email raced past the pre-check). create_full_onboarding already
+        # rolled the whole flow back, so this never leaves an orphan. Report a
+        # clean 409 instead of a raw 500 (maintenance pass: Bug 1/3).
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Candidate already exists")
 
     # Re-query for fresh ORM state to satisfy from_attributes serialization.
     cand = db.query(CandidateModel).filter(CandidateModel.id == candidate.id).first()
