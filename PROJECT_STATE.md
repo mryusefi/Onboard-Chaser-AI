@@ -9,12 +9,13 @@
 - GitHub: `https://github.com/mryusefi/Onboard-Chaser-AI.git`
 
 ## Current Git State
-- **Branch:** `feature/custom-required-documents` (maintenance pass Part C;
-  stacked: fix/onboarding-create-500 → fix/reminder-toggle-auth →
-  fix/onboardings-page-auth → feature/hr-signup-ui → this)
-- **Status:** maintenance pass in progress — Part A (Bugs 1–4) + Part B
-  (signup UI) + Part C (custom documents) committed & pushed per branch;
-  Part D (theme toggle) pending. NOTHING merged to main by agents.
+- **Branch:** `feature/theme-toggle` (maintenance pass Part D; stacked:
+  fix/onboarding-create-500 → fix/reminder-toggle-auth →
+  fix/onboardings-page-auth → feature/hr-signup-ui →
+  feature/custom-required-documents → this)
+- **Status:** maintenance pass COMPLETE — Parts A (Bugs 1–4), B (signup UI),
+  C (custom documents) and D (dark/light theme) each committed on their own
+  branch & pushed. NOTHING merged to main by agents.
 - **Backend tests:** 199 passing (US01–US11: 178 + test_bugfixes 8 +
   test_auth_token 5 + test_custom_documents 8)
 - **Frontend:** `npx vite build` exit 0 after every part; ad-hoc contract
@@ -47,6 +48,16 @@
   with type dropdown + "Load standard 4" prefill (empty list = backend
   defaults). **Deliberately NOT implemented:** `text_input` free-text answers
   (needs portal UI + non-file verification semantics → its own story).
+- **Part D:** `darkMode:'class'` + `night` token palette in
+  tailwind.config.js; `ThemeContext` (system→dark→light cycle, localStorage
+  `oca_theme`, live `prefers-color-scheme` tracking, `dark` class on `<html>`);
+  pre-paint inline script in index.html (no white flash); `ThemeToggle` in
+  Topbar + CandidateLayout header + Login/Signup; `dark:` variants across all
+  ui/ components, layouts and pages (bulk token transform + targeted fixes;
+  ChaseTrail's inline gradient connector moved into index.css so it can flip).
+  Build exit 0; compiled CSS contains 42 `.dark`-scoped rules. NOT
+  browser-verified — needs a manual contrast pass before merge (no JS test
+  framework in this project).
 - Old adoption note still true: frontend consolidated on the UI kit,
   src-new/ deleted, /onboard/:token is a security decision — do not revert.
 
