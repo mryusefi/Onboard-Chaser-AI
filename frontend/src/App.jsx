@@ -8,6 +8,7 @@ import CandidateDetail from './pages/CandidateDetail'
 import CreateOnboarding from './pages/CreateOnboarding'
 import Reminders from './pages/Reminders'
 import Login from './pages/Login'
+import Signup from './pages/Signup'
 import CandidatePortal from './pages/CandidatePortal'
 
 // US12-frontend — final route map.
@@ -20,6 +21,7 @@ import CandidatePortal from './pages/CandidatePortal'
 //   /create-onboarding    → create flow (US06) + invitation (US07)
 //   /reminders            → reminder configuration (US09)
 //   /login                → HR sign-in (no guard)
+//   /signup               → HR account creation (no guard; maintenance Part B)
 //
 // Candidate area (NO guard — magic-link token IS the authorization):
 //   /onboard/:token       → candidate portal (US01–US05)
@@ -30,6 +32,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
 
       <Route element={<RequireAuth />}>
         <Route element={<HRLayout />}>

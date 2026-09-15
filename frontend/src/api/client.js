@@ -82,6 +82,17 @@ export async function login(email, password) {
   return data
 }
 
+// HR sign-up (maintenance pass Part B): POST /api/v1/auth/register
+// {email, full_name, password}. Backend always creates is_hr=True accounts;
+// is_hr is NOT settable from the request body (UserCreate has only these
+// three fields), so the UI must not offer it.
+export function register({ email, full_name, password }) {
+  return apiFetch('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ email, full_name, password }),
+  })
+}
+
 export function logout() {
   setToken('')
 }
