@@ -1,10 +1,15 @@
 export default function ProgressBar({ percent = 0, size = 'md', className = '' }) {
   const height = size === 'sm' ? 'h-1.5' : size === 'lg' ? 'h-2.5' : 'h-2'
-  const color = percent >= 100 ? 'bg-success' : percent < 50 ? 'bg-danger' : 'bg-brand'
+  const color =
+    percent >= 100
+      ? 'bg-success dark:bg-success-night'
+      : percent < 50
+      ? 'bg-danger dark:bg-danger-night'
+      : 'bg-brand dark:bg-brand-night'
 
   return (
     <div
-      className={`w-full overflow-hidden rounded-full bg-surface-sunken ${height} ${className}`}
+      className={`w-full overflow-hidden rounded-full bg-surface-sunken dark:bg-night-sunken ${height} ${className}`}
       role="progressbar"
       aria-valuenow={percent}
       aria-valuemin={0}

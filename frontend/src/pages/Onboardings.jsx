@@ -63,13 +63,13 @@ export default function Onboardings() {
       <div className="px-8 py-7">
         <div className="mb-5 flex flex-wrap items-center gap-3">
           <div className="relative w-full max-w-xs">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint dark:text-night-ink-faint" />
             <input
               type="text"
               value={query}
               onChange={handleSearch}
               placeholder="Search by name or email"
-              className="h-10 w-full rounded-lg border border-border bg-surface pl-9 pr-3 text-[13.5px] text-ink placeholder:text-ink-faint focus:border-brand"
+              className="h-10 w-full rounded-lg border border-border dark:border-night-line bg-surface dark:bg-night-surface pl-9 pr-3 text-[13.5px] text-ink dark:text-night-ink placeholder:text-ink-faint focus:border-brand"
             />
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -79,8 +79,8 @@ export default function Onboardings() {
                 onClick={() => handleFilter(f.key)}
                 className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors ${
                   filters.status === f.key
-                    ? 'bg-ink text-white'
-                    : 'bg-surface-sunken text-ink-soft hover:bg-border-soft'
+                    ? 'bg-ink text-white dark:bg-night-ink dark:text-night-ink'
+                    : 'bg-surface-sunken dark:bg-night-sunken text-ink-soft dark:text-night-ink-soft hover:bg-border-soft'
                 }`}
               >
                 {f.label}
@@ -90,8 +90,8 @@ export default function Onboardings() {
               onClick={toggleAttention}
               className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors ${
                 filters.attentionOnly
-                  ? 'bg-danger text-white'
-                  : 'bg-surface-sunken text-ink-soft hover:bg-border-soft'
+                  ? 'bg-danger text-white dark:bg-danger-night dark:text-night'
+                  : 'bg-surface-sunken dark:bg-night-sunken text-ink-soft dark:text-night-ink-soft hover:bg-border-soft'
               }`}
             >
               Needs attention
@@ -100,7 +100,7 @@ export default function Onboardings() {
         </div>
 
         {error && (
-          <div className="mb-4 rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger">
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger-soft dark:bg-danger-night-soft px-4 py-3 text-sm text-danger dark:text-danger-night">
             {error}
           </div>
         )}
@@ -110,7 +110,7 @@ export default function Onboardings() {
         {/* Pagination (server-side, US10 offset/limit) */}
         {meta.total > meta.pageSize && (
           <div className="mt-4 flex items-center justify-between text-sm">
-            <p className="text-ink-soft">
+            <p className="text-ink-soft dark:text-night-ink-soft">
               Page {meta.page} of {totalPages} · {meta.total} total
             </p>
             <div className="flex items-center gap-2">

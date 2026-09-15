@@ -88,9 +88,3 @@ html.dark .chase-connector {
   background-image: linear-gradient(to bottom, #3a404d 0 4px, transparent 4px 8px);
   background-size: 1px 8px;
 }
-
-/* legacy helper from the per-story pages (gradient hero); kept until the
-   old HomePage is confirmed unused, then removable */
-.gradient-bg {
-  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-}

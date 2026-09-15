@@ -51,7 +51,7 @@ function Toggle({ checked, onChange, disabled }) {
       disabled={disabled}
       onClick={onChange}
       className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
-        checked ? 'bg-brand' : 'bg-border'
+        checked ? 'bg-brand dark:bg-brand-night' : 'bg-border dark:bg-night-line'
       }`}
     >
       <span
@@ -143,7 +143,7 @@ export default function Reminders() {
     return (
       <div>
         <Topbar eyebrow="Reminders" title="Automated reminders" />
-        <div className="flex items-center justify-center gap-2 py-20 text-sm text-ink-faint">
+        <div className="flex items-center justify-center gap-2 py-20 text-sm text-ink-faint dark:text-night-ink-faint">
           <Loader2 className="h-5 w-5 animate-spin" /> Loading settings…
         </div>
       </div>
@@ -155,7 +155,7 @@ export default function Reminders() {
       <div>
         <Topbar eyebrow="Reminders" title="Automated reminders" />
         <div className="px-8 py-10">
-          <div className="rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger">
+          <div className="rounded-xl border border-danger/25 bg-danger-soft dark:bg-danger-night-soft px-4 py-3 text-sm text-danger dark:text-danger-night">
             {loadError}
           </div>
         </div>
@@ -176,18 +176,18 @@ export default function Reminders() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {FIELDS.map((f) => (
               <Card key={f.key} className="p-5">
-                <p className="text-[13.5px] font-semibold text-ink">{f.label}</p>
-                <p className="mt-1 text-xs text-ink-faint">{f.help}</p>
+                <p className="text-[13.5px] font-semibold text-ink dark:text-night-ink">{f.label}</p>
+                <p className="mt-1 text-xs text-ink-faint dark:text-night-ink-faint">{f.help}</p>
                 <input
                   type="number"
                   value={form[f.key]}
                   onChange={(e) => setField(f.key, e.target.value)}
-                  className={`mt-3 h-10 w-full rounded-lg border bg-surface px-3 text-[13.5px] text-ink focus:outline-none ${
-                    fieldErrors[f.key] ? 'border-danger' : 'border-border focus:border-brand'
+                  className={`mt-3 h-10 w-full rounded-lg border bg-surface dark:bg-night-surface px-3 text-[13.5px] text-ink dark:text-night-ink focus:outline-none ${
+                    fieldErrors[f.key] ? 'border-danger' : 'border-border dark:border-night-line focus:border-brand'
                   }`}
                 />
                 {fieldErrors[f.key] && (
-                  <p className="mt-1.5 text-xs font-medium text-danger">{fieldErrors[f.key]}</p>
+                  <p className="mt-1.5 text-xs font-medium text-danger dark:text-danger-night">{fieldErrors[f.key]}</p>
                 )}
               </Card>
             ))}
@@ -196,8 +196,8 @@ export default function Reminders() {
             <Card className="p-5 sm:col-span-2">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[13.5px] font-semibold text-ink">Reminders enabled</p>
-                  <p className="mt-1 text-xs text-ink-faint">
+                  <p className="text-[13.5px] font-semibold text-ink dark:text-night-ink">Reminders enabled</p>
+                  <p className="mt-1 text-xs text-ink-faint dark:text-night-ink-faint">
                     Turn off to pause all automated reminders (the hourly scan skips every
                     onboarding while disabled).
                   </p>
@@ -218,7 +218,7 @@ export default function Reminders() {
           </div>
         </form>
 
-        <p className="mt-6 max-w-3xl text-xs text-ink-faint">
+        <p className="mt-6 max-w-3xl text-xs text-ink-faint dark:text-night-ink-faint">
           The scan runs hourly (REMINDER_SCAN_INTERVAL_MINUTES, deployment setting). Frequency,
           quiet period, expiry warning window, cap and this kill switch are the HR-tunable
           knobs; the beat interval itself changes only with a worker restart.

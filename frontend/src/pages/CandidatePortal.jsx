@@ -62,8 +62,8 @@ export default function CandidatePortal() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 py-24 text-sm text-ink-faint">
-        <Loader2 className="h-6 w-6 animate-spin text-brand" />
+      <div className="flex flex-col items-center justify-center gap-3 py-24 text-sm text-ink-faint dark:text-night-ink-faint">
+        <Loader2 className="h-6 w-6 animate-spin text-brand dark:text-brand-night" />
         Validating your secure access…
       </div>
     )
@@ -72,12 +72,12 @@ export default function CandidatePortal() {
   if (error) {
     return (
       <div className="py-16 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-danger-soft">
-          <AlertCircle className="h-6 w-6 text-danger" />
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-danger-soft dark:bg-danger-night-soft">
+          <AlertCircle className="h-6 w-6 text-danger dark:text-danger-night" />
         </div>
-        <p className="mt-4 text-sm font-medium text-ink">This onboarding link isn't valid.</p>
-        <p className="mt-1 text-sm text-ink-faint">{error}</p>
-        <p className="mt-4 text-xs text-ink-faint">
+        <p className="mt-4 text-sm font-medium text-ink dark:text-night-ink">This onboarding link isn't valid.</p>
+        <p className="mt-1 text-sm text-ink-faint dark:text-night-ink-faint">{error}</p>
+        <p className="mt-4 text-xs text-ink-faint dark:text-night-ink-faint">
           The link may have expired. Please request a new onboarding link from your HR team.
         </p>
       </div>
@@ -99,34 +99,34 @@ export default function CandidatePortal() {
   return (
     <div>
       {isComplete ? (
-        <div className="mb-8 flex flex-col items-center rounded-2xl border border-success/20 bg-success-soft px-6 py-8 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-success text-white">
+        <div className="mb-8 flex flex-col items-center rounded-2xl border border-success/20 bg-success-soft dark:bg-success-night-soft px-6 py-8 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-success dark:bg-success-night text-white dark:text-night">
             <CheckCircle2 className="h-6 w-6" />
           </span>
-          <h1 className="mt-4 font-display text-xl font-semibold text-ink">You're all set!</h1>
-          <p className="mt-1.5 max-w-sm text-sm text-ink-soft">
+          <h1 className="mt-4 font-display text-xl font-semibold text-ink dark:text-night-ink">You're all set!</h1>
+          <p className="mt-1.5 max-w-sm text-sm text-ink-soft dark:text-night-ink-soft">
             All required onboarding documents have been submitted.
           </p>
-          <p className="mt-3 text-[13px] font-medium text-success">
+          <p className="mt-3 text-[13px] font-medium text-success dark:text-success-night">
             ✓ {total} of {total} documents completed
           </p>
         </div>
       ) : (
         <div className="mb-8">
-          <h1 className="font-display text-xl font-semibold tracking-tight text-ink">
+          <h1 className="font-display text-xl font-semibold tracking-tight text-ink dark:text-night-ink">
             Welcome, {firstName}
           </h1>
-          <p className="mt-1.5 text-sm text-ink-soft">
+          <p className="mt-1.5 text-sm text-ink-soft dark:text-night-ink-soft">
             Complete your onboarding documents before your start date.
           </p>
 
           <div className="mt-5 max-w-md">
             <div className="mb-1.5 flex items-center justify-between text-[13px]">
-              <span className="font-medium text-ink">Progress</span>
-              <span className="tabular font-mono text-ink-soft">{percent}%</span>
+              <span className="font-medium text-ink dark:text-night-ink">Progress</span>
+              <span className="tabular font-mono text-ink-soft dark:text-night-ink-soft">{percent}%</span>
             </div>
             <ProgressBar percent={percent} size="lg" />
-            <p className="mt-1.5 text-xs text-ink-faint">
+            <p className="mt-1.5 text-xs text-ink-faint dark:text-night-ink-faint">
               {completed} of {total} documents completed
             </p>
           </div>
@@ -135,9 +135,9 @@ export default function CandidatePortal() {
 
       <div className="space-y-3">
         {portalDocs.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-border py-12 text-center">
-            <FileText className="mx-auto h-8 w-8 text-ink-faint" />
-            <p className="mt-2 text-sm text-ink-soft">No documents requested yet.</p>
+          <div className="rounded-2xl border border-dashed border-border dark:border-night-line py-12 text-center">
+            <FileText className="mx-auto h-8 w-8 text-ink-faint dark:text-night-ink-faint" />
+            <p className="mt-2 text-sm text-ink-soft dark:text-night-ink-soft">No documents requested yet.</p>
           </div>
         )}
         {portalDocs.map((doc) => (
@@ -154,19 +154,19 @@ export default function CandidatePortal() {
       </div>
 
       {error && (
-        <div className="mt-4 flex items-start gap-2 rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger">
+        <div className="mt-4 flex items-start gap-2 rounded-xl border border-danger/25 bg-danger-soft dark:bg-danger-night-soft px-4 py-3 text-sm text-danger dark:text-danger-night">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
         </div>
       )}
 
-      <div className="mt-9 flex flex-col gap-2.5 border-t border-border-soft pt-6">
+      <div className="mt-9 flex flex-col gap-2.5 border-t border-border-soft dark:border-night-line-soft pt-6">
         {SECURITY_NOTES.map(({ Icon, text }) => (
-          <div key={text} className="flex items-center gap-2 text-xs text-ink-faint">
+          <div key={text} className="flex items-center gap-2 text-xs text-ink-faint dark:text-night-ink-faint">
             <Icon className="h-3.5 w-3.5 shrink-0" />
             {text}
           </div>
         ))}
-        <div className="flex items-center gap-2 text-xs text-ink-faint">
+        <div className="flex items-center gap-2 text-xs text-ink-faint dark:text-night-ink-faint">
           <Clock className="h-3.5 w-3.5 shrink-0" />
           This link expires — your HR team can send a fresh one at any time.
         </div>

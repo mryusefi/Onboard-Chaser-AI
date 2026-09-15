@@ -75,11 +75,11 @@ export default function FileUpload({
 
   if (state === 'uploading') {
     return (
-      <div className="rounded-xl border border-border-soft bg-surface-sunken/60 px-4 py-3.5">
-        <div className="flex items-center gap-2.5 text-[13px] font-medium text-ink">
+      <div className="rounded-xl border border-border-soft dark:border-night-line-soft bg-surface-sunken/60 dark:bg-night-sunken px-4 py-3.5">
+        <div className="flex items-center gap-2.5 text-[13px] font-medium text-ink dark:text-night-ink">
           <Loader2 className="h-4 w-4 animate-spin text-brand" />
           <span className="flex-1 truncate">{fileName}</span>
-          <span className="text-xs text-ink-faint">Uploading…</span>
+          <span className="text-xs text-ink-faint dark:text-night-ink-faint">Uploading…</span>
         </div>
       </div>
     )
@@ -87,10 +87,10 @@ export default function FileUpload({
 
   if (state === 'success') {
     return (
-      <div className="flex items-center gap-2.5 rounded-xl border border-success/25 bg-success-soft px-4 py-3.5">
-        <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
+      <div className="flex items-center gap-2.5 rounded-xl border border-success/25 bg-success-soft dark:bg-success-night-soft px-4 py-3.5">
+        <CheckCircle2 className="h-5 w-5 shrink-0 text-success dark:text-success-night" />
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-success">Upload complete</p>
+          <p className="text-[13px] font-medium text-success dark:text-success-night">Upload complete</p>
           <p className="truncate text-xs text-success/80">{fileName}</p>
         </div>
       </div>
@@ -107,18 +107,18 @@ export default function FileUpload({
         onDragLeave={() => setIsDragOver(false)}
         onDrop={handleDrop}
         className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors ${
-          isDragOver ? 'border-brand bg-brand-soft' : 'border-border hover:border-ink-faint hover:bg-surface-sunken/60'
+          isDragOver ? 'border-brand bg-brand-soft dark:bg-brand-night-soft' : 'border-border dark:border-night-line hover:border-ink-faint hover:bg-surface-sunken/60 dark:hover:bg-night-sunken'
         }`}
       >
-        <UploadCloud className={`h-5 w-5 ${isDragOver ? 'text-brand' : 'text-ink-faint'}`} />
-        <span className="text-[13px] font-medium text-ink">
-          <span className="text-brand">Upload a document</span> or drag and drop
+        <UploadCloud className={`h-5 w-5 ${isDragOver ? 'text-brand dark:text-brand-night' : 'text-ink-faint dark:text-night-ink-faint'}`} />
+        <span className="text-[13px] font-medium text-ink dark:text-night-ink">
+          <span className="text-brand dark:text-brand-night">Upload a document</span> or drag and drop
         </span>
-        <span className="text-xs text-ink-faint">PDF, JPG, PNG or GIF · Maximum 10 MB</span>
+        <span className="text-xs text-ink-faint dark:text-night-ink-faint">PDF, JPG, PNG or GIF · Maximum 10 MB</span>
         <input type="file" accept={accept} className="hidden" onChange={handleInputChange} />
       </label>
       {error ? (
-        <p className="mt-1.5 flex items-start gap-1.5 text-xs text-danger">
+        <p className="mt-1.5 flex items-start gap-1.5 text-xs text-danger dark:text-danger-night">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           {error}
         </p>

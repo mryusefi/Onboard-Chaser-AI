@@ -28,7 +28,7 @@ export default function ThemeToggle({ className = '' }) {
       onClick={cycle}
       title={title}
       aria-label={title}
-      className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface text-ink-soft transition-colors hover:bg-surface-sunken hover:text-ink dark:border-night-line dark:bg-night-surface dark:text-night-ink-soft dark:hover:bg-night-sunken dark:hover:text-night-ink ${className}`}
+      className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border dark:border-night-line bg-surface dark:bg-night-surface text-ink-soft dark:text-night-ink-soft transition-colors hover:bg-surface-sunken dark:hover:bg-night-sunken hover:text-ink dark:hover:text-night-ink ${className}`}
     >
       <Icon className="h-4 w-4" />
     </button>
