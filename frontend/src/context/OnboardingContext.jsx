@@ -82,9 +82,14 @@ export function OnboardingProvider({ children }) {
 
   // ── Actions (same names as the prototype context) ──────────────────────
   const createOnboarding = useCallback(
-    async (form) => {
-      // US06 create-full: candidate + onboarding + seeded default documents.
-      const result = await createFullOnboarding({ candidate: form.candidate })
+    async ({ candidate, required_documents }) => {
+      // US06 create-full + Part C: HR may send an arbitrary custom document
+      // list (replaces the 4 defaults server-side). Omit required_documents
+      // to let the backend seed its standard defaults.
+      const result = await createFullOnboarding({
+        candidate,
+        ...(required_documents ? { required_documents } : {}),
+      })
       showToast('Onboarding created successfully.')
       return result
     },
