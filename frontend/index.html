@@ -5,6 +5,22 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Onboard Chaser AI</title>
+    <script>
+      // Part D — apply the stored theme before first paint (no white flash
+      // for dark-mode users). Mirrors ThemeContext: 'dark', or 'system'
+      // matching prefers-color-scheme, adds the `dark` class to <html>.
+      try {
+        var m = localStorage.getItem('oca_theme') || 'system'
+        var dark =
+          m === 'dark' ||
+          (m !== 'light' &&
+            window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches)
+        if (dark) document.documentElement.classList.add('dark')
+      } catch (e) {
+        /* storage unavailable — stay light */
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

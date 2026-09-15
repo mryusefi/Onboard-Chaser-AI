@@ -4,7 +4,8 @@
 
 /* US12-frontend — base styles translated from the prepared UI kit
    (src-new/index.css) to the v3 pipeline. Design tokens live in
-   tailwind.config.js; animations + scrollbar styling carried over. */
+   tailwind.config.js; Part D adds dark-mode base + component overrides
+   for spots that inline styles could not carry the `dark:` variant. */
 
 html {
   -webkit-font-smoothing: antialiased;
@@ -16,10 +17,19 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+html.dark body {
+  background-color: #0f1218; /* night */
+  color: #e7e7e3; /* night-ink */
+}
+
 :focus-visible {
   outline: 2px solid #0b6e6e; /* brand */
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+html.dark :focus-visible {
+  outline-color: #4fb3aa; /* brand-night */
 }
 
 /* subtle scrollbar for a polished feel */
@@ -36,6 +46,12 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #c7c6be;
+}
+html.dark ::-webkit-scrollbar-thumb {
+  background: #2a2f3a; /* night-line */
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #3a404d;
 }
 
 @keyframes toast-in {
@@ -60,6 +76,17 @@ body {
 }
 .animate-fade-in {
   animation: fade-in 0.25s ease-out;
+}
+
+/* ChaseTrail dotted connector (Part D: inline-style colors can't carry a
+   `dark:` variant, so it lives here). */
+.chase-connector {
+  background-image: linear-gradient(to bottom, #d8d7d0 0 4px, transparent 4px 8px);
+  background-size: 1px 8px;
+}
+html.dark .chase-connector {
+  background-image: linear-gradient(to bottom, #3a404d 0 4px, transparent 4px 8px);
+  background-size: 1px 8px;
 }
 
 /* legacy helper from the per-story pages (gradient hero); kept until the
