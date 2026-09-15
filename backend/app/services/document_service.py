@@ -117,6 +117,9 @@ def upload_file_to_storage(
         "description": doc.description,
         "instructions": doc.instructions,
         "accepted_formats": doc.accepted_formats,
+        "document_type": (
+            doc.document_type.value if doc.document_type else None
+        ),  # Part C categorization (None for pre-existing rows)
         "required": doc.required,
         "status": doc.status.value,
         "file_name": doc.file_name,
@@ -145,6 +148,7 @@ def get_document_for_upload(db: Session, document_id: str) -> dict:
         "description": doc.description,
         "instructions": doc.instructions,
         "accepted_formats": doc.accepted_formats,
+        "document_type": doc.document_type.value if doc.document_type else None,
         "required": doc.required,
         "status": doc.status.value,
         "file_name": doc.file_name,
@@ -217,6 +221,7 @@ def get_onboarding_detail(db: Session, onboarding_id) -> dict:
                 "description": d.description,
                 "instructions": d.instructions,
                 "accepted_formats": d.accepted_formats,
+                "document_type": d.document_type.value if d.document_type else None,
                 "required": d.required,
                 "status": _enum_value(d.status),
                 "file_name": d.file_name,

@@ -10,6 +10,7 @@ from app.models.models import (
     OnboardingStatus,
     Document,
     DocumentStatus,
+    DocumentType,
     ReminderLog,
     ReminderStatus,
     User,
@@ -17,7 +18,22 @@ from app.models.models import (
 from app.core.security import create_magic_token, validate_magic_token
 from app.core.config import settings
 
-# Default required documents seeded for every new onboarding (US01/US03).
+# Maintenance pass Part C — document type -> accepted_formats defaults.
+# Upload validation (document_service.validate_file) still runs off the
+# per-document accepted_formats; the type only chooses sensible defaults.
+TYPE_TO_FORMATS = {
+    "image": "JPG, PNG, GIF",
+    "pdf_document": "PDF",
+    "file": "PDF, JPG, PNG, GIF",
+}
+# Sanity bounds for the HR-supplied custom document list (part C: "no
+# minimum/maximum beyond basic sanity"). Empty list -> defaults are seeded.
+MAX_DOCUMENTS_PER_ONBOARDING = 20
+
+
+# Default required documents offered for a new onboarding (US01/US03).
+# Kept as a one-click pre-fill shortcut on the CreateOnboarding page; HR
+# edits/adds/removes freely (maintenance pass Part C).
 DEFAULT_DOCUMENTS = [
     {
         "name": "Government ID",
@@ -25,6 +41,7 @@ DEFAULT_DOCUMENTS = [
         "instructions": "Upload a clear, full-color photo or scan of your government-issued photo ID (passport, driver's license, or national ID card). All four corners must be visible and text must be legible.",
         "accepted_formats": "PDF, JPG, PNG",
         "required": True,
+        "document_type": "file",  # accepts both scans and PDFs
     },
     {
         "name": "Proof of Address",
@@ -32,6 +49,7 @@ DEFAULT_DOCUMENTS = [
         "instructions": "Upload a recent utility bill, bank statement, or official letter showing your current residential address. The document must be dated within the last 3 months.",
         "accepted_formats": "PDF, JPG, PNG",
         "required": True,
+        "document_type": "file",
     },
     {
         "name": "Tax Form (W-4)",
@@ -39,6 +57,7 @@ DEFAULT_DOCUMENTS = [
         "instructions": "Download and complete the IRS W-4 form. Ensure all fields are filled, sign and date the form before uploading. If you are unsure about any section, contact HR before submitting.",
         "accepted_formats": "PDF",
         "required": True,
+        "document_type": "pdf_document",
     },
     {
         "name": "Signed Offer Letter",
@@ -46,6 +65,7 @@ DEFAULT_DOCUMENTS = [
         "instructions": "Upload the signed copy of your employment offer letter. Both your signature and the employer's signature must be present. Scan or photograph the entire document.",
         "accepted_formats": "PDF, JPG, PNG",
         "required": True,
+        "document_type": "file",
     },
 ]
 
@@ -120,6 +140,11 @@ def create_onboarding_for_candidate(
     docs_to_seed = (
         DEFAULT_DOCUMENTS if not required_documents else required_documents
     )
+    # Maintenance pass Part C sanity: at least 1, at most 20 custom docs.
+    if len(docs_to_seed) < 1:
+        raise ValueError("at_least_one_document")
+    if len(docs_to_seed) > MAX_DOCUMENTS_PER_ONBOARDING:
+        raise ValueError("too_many_documents")
 
     onboarding = Onboarding(
         candidate_id=candidate_id,
@@ -130,12 +155,22 @@ def create_onboarding_for_candidate(
 
     created_docs: list[Document] = []
     for doc_data in docs_to_seed:
+        # Maintenance pass Part C: document_type derives accepted_formats
+        # when the caller didn't set them explicitly; an invalid type is a
+        # 422-worthy input error (mapped in the endpoints).
+        doc_type = doc_data.get("document_type") or None
+        if doc_type is not None and doc_type not in TYPE_TO_FORMATS:
+            raise ValueError("invalid_document_type")
+        formats = doc_data.get("accepted_formats") or (
+            TYPE_TO_FORMATS[doc_type] if doc_type else "PDF, JPG, PNG"
+        )
         doc = Document(
             onboarding_id=onboarding.id,
             name=doc_data["name"],
             description=doc_data.get("description"),
             instructions=doc_data.get("instructions"),
-            accepted_formats=doc_data.get("accepted_formats") or "PDF, JPG, PNG",
+            accepted_formats=formats,
+            document_type=DocumentType(doc_type) if doc_type else None,
             required=bool(doc_data.get("required", True)),
             status=DocumentStatus.PENDING,
         )
@@ -247,6 +282,9 @@ def validate_candidate_access(db: Session, token: str) -> dict:
             "description": doc.description,
             "instructions": doc.instructions,
             "accepted_formats": doc.accepted_formats,
+            "document_type": (
+                doc.document_type.value if doc.document_type else None
+            ),
             "required": doc.required,
             "status": doc.status.value,
         }

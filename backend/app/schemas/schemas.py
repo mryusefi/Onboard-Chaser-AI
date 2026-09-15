@@ -85,6 +85,7 @@ class DocumentResponse(BaseModel):
     description: Optional[str]
     instructions: Optional[str] = None
     accepted_formats: Optional[str] = None
+    document_type: Optional[str] = None  # image | pdf_document | file (Part C)
     required: bool
     status: str
     file_name: Optional[str]
@@ -111,12 +112,20 @@ class MagicLinkResponse(BaseModel):
 
 # --- US06: HR onboarding creation ---
 class RequiredDocumentCreate(BaseModel):
-    """A single custom required document to seed into a new onboarding."""
+    """
+    A single custom required document to seed into a new onboarding.
+
+    Maintenance pass Part C: ``document_type`` (image | pdf_document | file)
+    is accepted and, when present, derives the default accepted_formats if the
+    caller didn't set them explicitly. Upload validation still runs against
+    accepted_formats (the security rule), so type is categorization + UX.
+    """
     name: str
     description: Optional[str] = None
     instructions: Optional[str] = None
-    accepted_formats: Optional[str] = "PDF, JPG, PNG"
+    accepted_formats: Optional[str] = None
     required: bool = True
+    document_type: Optional[str] = None  # image | pdf_document | file
 
 
 class OnboardingCreate(BaseModel):
@@ -252,6 +261,7 @@ class DocumentDetailResponse(BaseModel):
     description: Optional[str] = None
     instructions: Optional[str] = None
     accepted_formats: Optional[str] = None
+    document_type: Optional[str] = None  # image | pdf_document | file (Part C)
     required: bool
     status: str
     file_name: Optional[str] = None
