@@ -123,6 +123,17 @@ export default function Reminders() {
       showToast('Reminder settings saved.')
     } catch (err) {
       showToast(err.message)
+      // Maintenance pass (Bug 2): on failure the toggle/fields must not keep
+      // showing the unsaved optimistic state — reload the server truth so the
+      // UI can't diverge from the stored config (e.g. a stale-token 401 would
+      // otherwise leave the switch visually flipped with nothing persisted).
+      try {
+        const current = await fetchReminderConfig()
+        setForm(current)
+        setFieldErrors({})
+      } catch {
+        /* the auth layer is already routing to login on 401 */
+      }
     } finally {
       setSaving(false)
     }

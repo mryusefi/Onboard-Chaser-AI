@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import {
-  ArrowLeft, Download, FileText, Loader2,
+  ArrowLeft, BellRing, Download, FileText, Loader2,
 } from 'lucide-react'
-import Topbar from '../components/Topbar'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
@@ -13,6 +12,7 @@ import DocumentRow from '../components/DocumentRow'
 import ChaseTrail from '../components/ChaseTrail'
 import { fetchOnboardingDetail, fetchAccessUrl, fetchReminderHistory } from '../api/client'
 import { useToast } from '../context/ToastContext'
+import { useOnboarding } from '../context/OnboardingContext'
 import { formatDate, formatDateTime } from '../utils/format'
 
 // US12-frontend: powered by GET /onboarding/{id}/detail (US11) +
@@ -25,6 +25,20 @@ export default function CandidateDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { sendReminder } = useOnboarding()
+  const [sendingReminder, setSendingReminder] = useState(false)
+
+  async function handleSendReminderNow() {
+    setSendingReminder(true)
+    try {
+      const result = await sendReminder(id)
+      // Refresh the audit trail so the new attempt appears immediately.
+      load()
+      return result
+    } finally {
+      setSendingReminder(false)
+    }
+  }
 
   const [detail, setDetail] = useState(null)
   const [reminders, setReminders] = useState([])
@@ -201,10 +215,24 @@ export default function CandidateDetail() {
         </Card>
 
         <Card className="p-6">
-          <h2 className="font-display text-base font-semibold text-ink">Reminder activity</h2>
-          <p className="mt-1 text-xs text-ink-faint">
-            Automated follow-ups from the hourly scan plus manual sends.
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="font-display text-base font-semibold text-ink">Reminder activity</h2>
+              <p className="mt-1 text-xs text-ink-faint">
+                Automated follow-ups from the hourly scan plus manual sends.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="secondary"
+              icon={BellRing}
+              disabled={sendingReminder}
+              onClick={handleSendReminderNow}
+              title="Send a reminder email now (manual trigger, US08)"
+            >
+              {sendingReminder ? 'Sending…' : 'Send now'}
+            </Button>
+          </div>
           <div className="mt-5">
             {reminders.length === 0 ? (
               <p className="text-sm text-ink-faint">No reminders sent yet.</p>
