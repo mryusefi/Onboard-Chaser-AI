@@ -63,7 +63,7 @@ MVP_Project/
 │   │   ├── models/models.py    # SQLAlchemy ORM: User, Candidate, Onboarding, Document (with file metadata + statuses)
 │   │   ├── schemas/schemas.py  # Pydantic models: UserCreate, UserLogin, Token, OnboardingPortalResponse, DocumentResponse, etc.
 │   │   ├── api/
-│   │   │   ├── auth.py         # POST /auth/register, POST /auth/login
+│   │   │   ├── auth.py         # POST /auth/register, /auth/login (JSON), /auth/token (form)
 │   │   │   ├── candidates.py   # POST /candidates/
 │   │   │   └── onboarding.py   # onboarding, magic-link, portal, document, status, progress, storage endpoints
 │   │   └── services/
@@ -131,6 +131,7 @@ Final route map:
 | Route | Auth | Page (kit) | Backend |
 |-------|------|-----------|---------|
 | `/login` | public | Login | `POST /api/v1/auth/login` |
+| `/signup` | public | Signup | `POST /api/v1/auth/register` (auto-login after) |
 | `/dashboard` | HR | Dashboard | `GET /api/v1/onboarding/` (summary + recent) |
 | `/onboardings` | HR | Onboardings | `GET /api/v1/onboarding/` (status/needs_attention/search/page/page_size) |
 | `/onboardings/:id` | HR | CandidateDetail | `GET .../detail`, `GET /documents/{id}/access-url`, `PATCH /documents/{id}/verification`, `GET .../reminders` |
@@ -156,6 +157,14 @@ status/needs_attention filters, pagination, needs-attention badge, 10 MB /
 extension upload validation, magic-link error/expiry states — all present in
 the new pages. HR auth gained a Login page + AuthContext + RequireAuth guard
 (the kit prototype had no auth screen).
+
+> Maintenance-pass changelog (post-adoption): Bug fixes — dev-DB additive
+> schema reconciliation at startup (fixes UndefinedColumn 500s), atomic
+> create-full (no orphan candidates on failure), `POST /auth/token`
+> (Swagger Authorize now works), global 401 → re-login handling in the API
+> client. Features — HR signup UI (`/signup`), custom document builder with
+> `document_type` (Part C). Dark/light theme toggle is its own branch
+> (`feature/theme-toggle`).
 
 ---
 
@@ -229,7 +238,7 @@ npm run dev
 ```bash
 cd backend
 TESTING=1 python -m pytest tests/ -v
-# Expected: 178 passed (US01: 12, US02: 11, US03: 18, US04: 12, US05: 14, US06: 17, US07: 6, US08: 31, US09: 17, US10: 21, US11: 18)
+# Expected: 199 passed (US01: 12, US02: 11, US03: 18, US04: 12, US05: 14, US06: 17, US07: 6, US08: 31, US09: 17, US10: 21, US11: 18, + maintenance: bugfixes 8, auth_token 5, custom_documents 8)
 ```
 
 Tests use an in-memory SQLite database (StaticPool) via `tests/conftest.py`, so
@@ -267,7 +276,7 @@ feature branch per story.
 - `GET /api/v1/onboarding/portal/{token}` — validates the token (signature,
   `type=magic` claim, expiry), marks the token used, starts the session
   (`status → in_progress`), and returns candidate info + document list.
-- HR auth scaffold: `POST /auth/register`, `POST /auth/login` (bcrypt + JWT).
+- HR auth scaffold: `POST /auth/register`, `POST /auth/login` (bcrypt + JWT). Maintenance pass: added `POST /auth/token` (OAuth2 form) so Swagger Authorize works; the frontend now has Login + Signup pages (`/signup` registers then auto-logs in).
 - Frontend route `/onboard/:token` with loading / access-denied states.
 
 ### US02 — Document Checklist
@@ -352,11 +361,21 @@ feature branch per story.
     (HR defines the full checklist explicitly — appending could silently
     duplicate defaults). Each item supports `name`, `description`,
     `instructions`, `accepted_formats`, `required`.
+  - Maintenance pass Part C update: items may also carry `document_type`
+    (`image` | `pdf_document` | `file`), stored on the `Document` model
+    (categorization only — upload validation still runs off
+    `accepted_formats`; the type supplies default formats when omitted).
+    Custom lists are sanity-bounded at 1–20 documents (422 otherwise); a
+    free-text `text_input` type was deliberately **not** added (needs its
+    own story for portal text answers + verification semantics).
 - New onboardings always start as `pending` (unchanged US01 behavior).
-- Frontend: new page `src/pages/CreateOnboardingPage.jsx` at route
-  `/admin/onboarding/new` — candidate info form, checkbox list of the 4
-  default docs plus add/remove custom document builder, loading/success/error
-  states, and a post-submit summary view of the created onboarding.
+- Frontend (UI adoption rewrote this as `src/pages/CreateOnboarding.jsx` at
+  route `/create-onboarding`): candidate info form + **custom document
+  builder** (add/remove rows; each row = name, type dropdown
+  Image/PDF/Any-file, optional instructions), a "Load standard 4 documents"
+  one-click prefill HR can edit/remove, and an empty list meaning "use
+  backend defaults". Loading/success/error states and a post-submit summary
+  of created documents remain as before.
 
 ### US07 — Invitation Email
 - `app/services/email_service.py` (new):
@@ -478,9 +497,10 @@ feature branch per story.
     the onboarding summary view (below the invitation panel): lists past
     reminders with status chips (sent/failed/skipped), type and timestamp,
     plus a "Send reminder now" button wired to the US08 manual trigger.
-  - `src/utils/api.js` — `authFetch` helper: attaches the HR JWT from
-    `localStorage.hr_token` (the MVP has no login UI yet; paste the token
-    from `POST /api/v1/auth/login`).
+  - `src/utils/api.js` — `authFetch` helper (HR JWT from
+    `localStorage.hr_token`). NOTE: superseded by the Frontend UI Adoption
+    below — `src/api/client.js` is the single client, and HR now signs in via
+    the `/login` page (plus `/signup`).
 
 ### US10 — HR Dashboard (Onboarding List)
 - `GET /api/v1/onboarding/` (HR auth) — every onboarding with, per row:
@@ -580,6 +600,7 @@ feature branch per story.
 | GET  | `/health` | Health check |
 | POST | `/api/v1/auth/register` | Register HR user |
 | POST | `/api/v1/auth/login` | HR login → JWT |
+| POST | `/api/v1/auth/token` | HR login via OAuth2 form (Swagger Authorize) (maintenance) |
 | POST | `/api/v1/candidates/` | Create candidate — **HR auth**, dup email → 409 |
 | POST | `/api/v1/onboarding/create-full` | Combined create candidate + onboarding — **HR auth** (US06) |
 | POST | `/api/v1/onboarding/{candidate_id}` | Create onboarding (+ optional custom docs) — **HR auth** (US06) |

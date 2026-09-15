@@ -9,11 +9,46 @@
 - GitHub: `https://github.com/mryusefi/Onboard-Chaser-AI.git`
 
 ## Current Git State
-- **Branch:** `feature/ui-kit-adoption` (frontend reskin/architecture; backend untouched)
-- **Latest commit:** `5b2ebfc chore: README — new frontend/src structure, Frontend UI Adoption section with route map and /onboard/:token security note`
-- **Status:** frontend consolidated onto the prepared UI kit; push pending; nothing merged
-- **Backend tests:** 178 passing (backend untouched by this story — no API changes)
-- **Frontend:** `npx vite build` exit 0; structural checks pass (routes, API wiring, no mock remnants)
+- **Branch:** `feature/custom-required-documents` (maintenance pass Part C;
+  stacked: fix/onboarding-create-500 → fix/reminder-toggle-auth →
+  fix/onboardings-page-auth → feature/hr-signup-ui → this)
+- **Status:** maintenance pass in progress — Part A (Bugs 1–4) + Part B
+  (signup UI) + Part C (custom documents) committed & pushed per branch;
+  Part D (theme toggle) pending. NOTHING merged to main by agents.
+- **Backend tests:** 199 passing (US01–US11: 178 + test_bugfixes 8 +
+  test_auth_token 5 + test_custom_documents 8)
+- **Frontend:** `npx vite build` exit 0 after every part; ad-hoc contract
+  checks run per part (temp scripts, cleaned).
+
+## Maintenance Pass — key facts for the next session
+- **Git identity:** all maintenance commits are authored as `mryusefi
+  <mohammadreza.yousefi.2003@gmail.com>` (repo-local config — NOT Agent Hermes).
+- **Bugs 1+3+4 root causes (fixed on the stacked branches):**
+  1. Dev Postgres volume had schema drift — `create_all()` never ALTERs, so
+     US07/US11 columns were missing → raw 500s (create-full, dashboard list,
+     etc.). New `app/core/schema_bootstrap.reconcile_additive_schema()` runs
+     in lifespan (idempotent, additive-only). Alembic stays the prod path.
+  2. `create_full_onboarding` non-atomic → orphan candidates → confusing
+     409 on retry. Now single transaction; IntegrityError → clean 409.
+  3. Swagger Authorize broken because tokenUrl pointed at JSON `/auth/login`;
+     new form-encoded `POST /auth/token` (login page still uses JSON login).
+  4. Frontend: global 401 handling in api/client.js (clears token → login
+     screen w/ "session expired" hint); Reminders save reverts to server
+     truth on error; restored the "Send reminder now" button on
+     CandidateDetail (adoption had orphaned context.sendReminder).
+- **Part B:** `/signup` page (register → auto-login). FLAG for product:
+  `POST /auth/register` is unauthenticated and always creates `is_hr=True`
+  (single-HR MVP). If multi-HR ever lands, gate this endpoint. `is_hr` is NOT
+  in UserCreate, so no body-based privilege escalation.
+- **Part C:** `document_type` enum (`image|pdf_document|file`) on Document +
+  RequiredDocumentCreate; formats default from type when omitted (explicit
+  accepted_formats win); 1–20 docs sanity → 422; exposed on portal/detail/
+  upload/create outputs; CreateOnboarding page is now an add/remove builder
+  with type dropdown + "Load standard 4" prefill (empty list = backend
+  defaults). **Deliberately NOT implemented:** `text_input` free-text answers
+  (needs portal UI + non-file verification semantics → its own story).
+- Old adoption note still true: frontend consolidated on the UI kit,
+  src-new/ deleted, /onboard/:token is a security decision — do not revert.
 
 ## Completed User Stories (US01–US07)
 All merged to main via feature branches. Plane epic + sub-tasks for each marked Done.
@@ -27,20 +62,6 @@ All merged to main via feature branches. Plane epic + sub-tasks for each marked 
 - **US11:** COMPLETE on `feature/candidate-detail-verification` (pushed)
 - US12 (AI document verification) remains POST-MVP / out of scope — US11
   deliberately implements MANUAL HR verification only.
-- **Frontend UI Adoption (this story):** the per-story frontend was replaced
-  by the prepared UI kit — see the "Frontend UI Adoption" section of the
-  README for the final route map and the /onboard/:token security decision.
-  Removed old pages: HomePage, CreateOnboardingPage, OnboardingDashboardPage,
-  OnboardingDetailPage, OnboardingPortal, ReminderSettingsPage, AdminNav,
-  ReminderHistory, utils/api.js. New: api/client.js (single fetch layer),
-  AuthContext + Login + RequireAuth guard, HRLayout/CandidateLayout, and the
-  kit's components (Sidebar, Topbar, CandidateTable, DocumentRow, ChaseTrail,
-  ui/*). Tailwind tokens from the kit's v4 @theme block were translated into
-  the v3 tailwind.config.js (names preserved: paper/ink/brand/success/…).
-  The prototype's data/mockData.js was NOT copied into src/ — all data now
-  comes from the real backend via OnboardingContext.
-- **Login credentials note:** the MVP has no register UI; create the HR
-  account via POST /api/v1/auth/register, then sign in at /login.
 
 ## US11 — What Was Built (branch `feature/candidate-detail-verification`)
 - `DocumentVerificationStatus` enum + Document fields: verification_status
@@ -90,7 +111,8 @@ All merged to main via feature branches. Plane epic + sub-tasks for each marked 
   (form, load/save states, inline validation, kill switch);
   src/components/ReminderHistory.jsx on the onboarding summary view
   (status chips + "Send reminder now" button); src/utils/api.js authFetch
-  helper (reads localStorage.hr_token — no login UI exists yet).
+  helper (reads localStorage.hr_token). Superseded post-adoption by
+  src/api/client.js + a Login page + /signup + RequireAuth guard.
 - Frontend build verified: `npx vite build` OK (1574 modules).
 - Tests: tests/test_us09.py — 17 tests (GET defaults + auto-create +
   idempotency, PUT happy paths, 5 validation cases incl. final>=lifetime,
@@ -185,7 +207,7 @@ cd frontend && npm install && npm run dev
 ```bash
 cd "E:\Onboard Chaser AI/MVP_Project/backend"
 TESTING=1 python -m pytest tests/ -q
-# Expected: 178 passed (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6, US08:31, US09:17, US10:21, US11:18)
+# Expected: 199 passed (US01:12 … US11:18 = 178) + maintenance: bugfixes 8, auth_token 5, custom_documents 8
 ```
 
 ## Work Convention (must follow)
@@ -208,8 +230,8 @@ After finishing a US:
 
 ## What Does NOT Exist Yet (post-11 gaps)
 - US12: AI document verification (POST-MVP, explicitly out of scope — US11 is manual HR verification)
-- No login UI (only API endpoints for register/login; frontend authFetch
-  expects the HR JWT in localStorage.hr_token)
+- (post-maintenance-pass) Login + Signup UI exist (/login, /signup);
+  api/client.js handles the JWT + global 401 → re-login
 - Docker runtime verification of celery-worker/celery-beat pending (daemon was
   down during the US08–US11 sessions)
 - Real-R2 runtime verification of access URLs pending (local signed-URL path
