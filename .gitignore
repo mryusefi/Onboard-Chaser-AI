@@ -7,7 +7,13 @@ venv/
 node_modules/
 dist/
 *.db
-.hermes-tmp/
-.hermes-tmp.7Vlkqk/
-.hermes-tmp.MchFPZ/
-.hermes-tmp.hES4AK/
+
+# agent/tool temp artifacts (session-scoped, never part of the project)
+.hermes-tmp*/
+.claude/
+
+# runtime artifacts (regenerated; not source)
+celerybeat-schedule*
+backend/celerybeat-schedule*
+# local-filesystem encrypted document storage (US04 fallback; R2 is the real backend)
+backend/uploads/
