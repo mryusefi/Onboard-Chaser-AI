@@ -4,7 +4,7 @@ import uuid
 from uuid import UUID
 
 from fastapi import Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
@@ -17,7 +17,12 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 ALGORITHM = "HS256"
 
 # Used to extract the Bearer token from HR-facing requests.
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_PREFIX}/auth/login", auto_error=False)
+# tokenUrl points at the OAuth2-form endpoint below so Swagger's Authorize
+# button works (it posts application/x-www-form-urlencoded, which the JSON
+# /auth/login endpoint cannot consume — maintenance pass Bug 2).
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl=f"{settings.API_V1_PREFIX}/auth/token", auto_error=False
+)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
