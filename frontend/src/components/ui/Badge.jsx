@@ -6,26 +6,26 @@ import { CheckCircle2, AlertTriangle, Clock, CircleDot, ShieldCheck, XCircle, Ma
 // verification_status (US11), needs_attention (US10), reminder status (US08).
 const STATUS_CONFIG = {
   // Onboarding / document status
-  complete: { label: 'Complete', bg: 'bg-success-soft', text: 'text-success', Icon: CheckCircle2 },
-  completed: { label: 'Completed', bg: 'bg-success-soft', text: 'text-success', Icon: CheckCircle2 },
-  uploaded: { label: 'Uploaded', bg: 'bg-success-soft', text: 'text-success', Icon: CheckCircle2 },
-  attention: { label: 'Needs attention', bg: 'bg-warning-soft', text: 'text-warning', Icon: AlertTriangle },
-  in_progress: { label: 'In progress', bg: 'bg-brand-soft', text: 'text-brand-dark', Icon: CircleDot },
-  pending: { label: 'Pending', bg: 'bg-neutral-soft', text: 'text-neutral', Icon: CircleDot },
-  missing: { label: 'Missing', bg: 'bg-danger-soft', text: 'text-danger', Icon: AlertTriangle },
+  complete: { label: 'Complete', bg: 'bg-success-soft dark:bg-success-night-soft', text: 'text-success dark:text-success-night', Icon: CheckCircle2 },
+  completed: { label: 'Completed', bg: 'bg-success-soft dark:bg-success-night-soft', text: 'text-success dark:text-success-night', Icon: CheckCircle2 },
+  uploaded: { label: 'Uploaded', bg: 'bg-success-soft dark:bg-success-night-soft', text: 'text-success dark:text-success-night', Icon: CheckCircle2 },
+  attention: { label: 'Needs attention', bg: 'bg-warning-soft dark:bg-warning-night-soft', text: 'text-warning dark:text-warning-night', Icon: AlertTriangle },
+  in_progress: { label: 'In progress', bg: 'bg-brand-soft dark:bg-brand-night-soft', text: 'text-brand-dark dark:text-brand-night', Icon: CircleDot },
+  pending: { label: 'Pending', bg: 'bg-neutral-soft dark:bg-neutral-night-soft', text: 'text-neutral dark:text-neutral-night', Icon: CircleDot },
+  missing: { label: 'Missing', bg: 'bg-danger-soft dark:bg-danger-night-soft', text: 'text-danger dark:text-danger-night', Icon: AlertTriangle },
   // Verification (US11)
-  unverified: { label: 'Unverified', bg: 'bg-neutral-soft', text: 'text-neutral', Icon: CircleDot },
-  verified: { label: 'Verified', bg: 'bg-success-soft', text: 'text-success', Icon: ShieldCheck },
-  rejected: { label: 'Rejected', bg: 'bg-danger-soft', text: 'text-danger', Icon: XCircle },
+  unverified: { label: 'Unverified', bg: 'bg-neutral-soft dark:bg-neutral-night-soft', text: 'text-neutral dark:text-neutral-night', Icon: CircleDot },
+  verified: { label: 'Verified', bg: 'bg-success-soft dark:bg-success-night-soft', text: 'text-success dark:text-success-night', Icon: ShieldCheck },
+  rejected: { label: 'Rejected', bg: 'bg-danger-soft dark:bg-danger-night-soft', text: 'text-danger dark:text-danger-night', Icon: XCircle },
   // Invitation email status (US07)
-  not_sent: { label: 'Not sent', bg: 'bg-neutral-soft', text: 'text-neutral', Icon: Ban },
-  sent: { label: 'Sent', bg: 'bg-success-soft', text: 'text-success', Icon: Mail },
-  failed: { label: 'Failed', bg: 'bg-danger-soft', text: 'text-danger', Icon: AlertTriangle },
-  delivered: { label: 'Delivered', bg: 'bg-success-soft', text: 'text-success', Icon: Mail },
-  bounced: { label: 'Bounced', bg: 'bg-danger-soft', text: 'text-danger', Icon: AlertTriangle },
+  not_sent: { label: 'Not sent', bg: 'bg-neutral-soft dark:bg-neutral-night-soft', text: 'text-neutral dark:text-neutral-night', Icon: Ban },
+  sent: { label: 'Sent', bg: 'bg-success-soft dark:bg-success-night-soft', text: 'text-success dark:text-success-night', Icon: Mail },
+  failed: { label: 'Failed', bg: 'bg-danger-soft dark:bg-danger-night-soft', text: 'text-danger dark:text-danger-night', Icon: AlertTriangle },
+  delivered: { label: 'Delivered', bg: 'bg-success-soft dark:bg-success-night-soft', text: 'text-success dark:text-success-night', Icon: Mail },
+  bounced: { label: 'Bounced', bg: 'bg-danger-soft dark:bg-danger-night-soft', text: 'text-danger dark:text-danger-night', Icon: AlertTriangle },
   // Reminder attempt status (US08)
-  scheduled: { label: 'Scheduled', bg: 'bg-neutral-soft', text: 'text-neutral', Icon: Clock },
-  skipped: { label: 'Skipped', bg: 'bg-neutral-soft', text: 'text-neutral', Icon: Clock },
+  scheduled: { label: 'Scheduled', bg: 'bg-neutral-soft dark:bg-neutral-night-soft', text: 'text-neutral dark:text-neutral-night', Icon: Clock },
+  skipped: { label: 'Skipped', bg: 'bg-neutral-soft dark:bg-neutral-night-soft', text: 'text-neutral dark:text-neutral-night', Icon: Clock },
 }
 
 export default function Badge({ status, children, withIcon = true, className = '' }) {

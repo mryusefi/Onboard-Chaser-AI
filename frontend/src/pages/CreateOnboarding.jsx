@@ -36,6 +36,11 @@ const STANDARD_DOCS = [
 let docSeq = 0
 const nextId = () => `doc-${++docSeq}`
 
+// Part D: shared field styling via Tailwind classes (dark variants included) —
+// replaces the old inline .input <style> (its --color-* vars never applied).
+const inputCls =
+  'h-10 w-full rounded-lg border border-border dark:border-night-line bg-surface dark:bg-night-surface px-3 text-[13.5px] text-ink dark:text-night-ink placeholder:text-ink-faint dark:placeholder:text-night-ink-faint focus:border-brand dark:focus:border-brand-night focus:outline-none'
+
 export default function CreateOnboarding() {
   const { createOnboarding } = useOnboarding()
   const { showToast } = useToast()
@@ -141,21 +146,21 @@ export default function CreateOnboarding() {
         <Topbar eyebrow="Create onboarding" title="Onboarding created" />
         <div className="px-8 py-8">
           <Card className="mx-auto max-w-lg p-8 text-center">
-            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success-soft text-success">
+            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success-soft dark:bg-success-night-soft text-success dark:text-success-night">
               <CheckCircle2 className="h-6 w-6" />
             </span>
-            <h2 className="mt-4 font-display text-xl font-semibold text-ink">Onboarding created</h2>
-            <p className="mt-1.5 text-sm text-ink-soft">
-              Candidate <span className="font-medium text-ink">{created.candidate.full_name}</span>
+            <h2 className="mt-4 font-display text-xl font-semibold text-ink dark:text-night-ink">Onboarding created</h2>
+            <p className="mt-1.5 text-sm text-ink-soft dark:text-night-ink-soft">
+              Candidate <span className="font-medium text-ink dark:text-night-ink">{created.candidate.full_name}</span>
             </p>
-            <p className="text-sm text-ink-soft">
+            <p className="text-sm text-ink-soft dark:text-night-ink-soft">
               {created.documents.length} required document{created.documents.length === 1 ? '' : 's'} requested.
             </p>
             <div className="mt-4 space-y-1.5 text-left">
               {created.documents.map((d) => (
-                <div key={d.id} className="flex items-center justify-between rounded-lg border border-border-soft bg-surface-sunken/40 px-3 py-2">
-                  <span className="text-[13px] text-ink">{d.name}</span>
-                  <Badge status="pending" withIcon={false} className="!bg-surface !text-ink-soft">
+                <div key={d.id} className="flex items-center justify-between rounded-lg border border-border-soft dark:border-night-line-soft bg-surface-sunken/40 dark:bg-night-sunken px-3 py-2">
+                  <span className="text-[13px] text-ink dark:text-night-ink">{d.name}</span>
+                  <Badge status="pending" withIcon={false} className="!bg-surface dark:bg-night-surface !text-ink-soft dark:text-night-ink-soft">
                     {d.document_type ? TYPE_LABEL[d.document_type] || d.document_type : 'Any file'}
                   </Badge>
                 </div>
@@ -168,15 +173,15 @@ export default function CreateOnboarding() {
               <Button size="sm" icon={Send} onClick={() => setConfirmOpen(true)}>Send invitation</Button>
             </div>
             {inviteStatus && (
-              <p className={`mt-4 text-[13px] font-medium ${inviteStatus === 'sent' ? 'text-success' : 'text-warning'}`}>
+              <p className={`mt-4 text-[13px] font-medium ${inviteStatus === 'sent' ? 'text-success dark:text-success-night' : 'text-warning dark:text-warning-night'}`}>
                 Invitation {inviteStatus.replace(/_/g, ' ')}
                 {inviteStatus !== 'sent' && ' — check RESEND_API_KEY configuration'}
               </p>
             )}
-            <div className="mt-6 border-t border-border-soft pt-5">
-              <Link to="/onboardings" className="text-[13px] font-medium text-brand-dark hover:underline">Go to onboardings</Link>
-              <span className="mx-2 text-ink-faint">·</span>
-              <button onClick={handleStartAnother} className="text-[13px] font-medium text-ink-soft hover:text-ink">Create another</button>
+            <div className="mt-6 border-t border-border-soft dark:border-night-line-soft pt-5">
+              <Link to="/onboardings" className="text-[13px] font-medium text-brand-dark dark:text-brand-night hover:underline">Go to onboardings</Link>
+              <span className="mx-2 text-ink-faint dark:text-night-ink-faint">·</span>
+              <button onClick={handleStartAnother} className="text-[13px] font-medium text-ink-soft dark:text-night-ink-soft hover:text-ink dark:hover:text-night-ink">Create another</button>
             </div>
           </Card>
         </div>
@@ -187,8 +192,8 @@ export default function CreateOnboarding() {
               {inviting ? 'Sending…' : 'Send invitation'}
             </Button>
           </>}>
-          <p className="text-[13.5px] text-ink-soft">
-            Sends the onboarding email to <span className="font-medium text-ink">{created.candidate.email}</span>
+          <p className="text-[13.5px] text-ink-soft dark:text-night-ink-soft">
+            Sends the onboarding email to <span className="font-medium text-ink dark:text-night-ink">{created.candidate.email}</span>
             {' '}with a secure, expiring magic link to their portal.
           </p>
         </Modal>
@@ -201,21 +206,21 @@ export default function CreateOnboarding() {
       <Topbar eyebrow="Onboardings" title="Create onboarding" subtitle="Set up a secure portal for a new candidate." />
       <div className="px-8 py-7">
         {error && (
-          <div className="mx-auto mb-4 max-w-xl rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>
+          <div className="mx-auto mb-4 max-w-xl rounded-xl border border-danger/25 bg-danger-soft dark:bg-danger-night-soft px-4 py-3 text-sm text-danger dark:text-danger-night">{error}</div>
         )}
         <Card className="mx-auto max-w-2xl p-7">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Candidate name"><input required value={form.full_name} onChange={(e) => updateCandidate('full_name', e.target.value)} placeholder="Sara Ahmadi" className="input" /></Field>
-              <Field label="Candidate email"><input required type="email" value={form.email} onChange={(e) => updateCandidate('email', e.target.value)} placeholder="sara@example.com" className="input" /></Field>
-              <Field label="Phone (optional)"><input value={form.phone} onChange={(e) => updateCandidate('phone', e.target.value)} placeholder="+1 555 000 0000" className="input" /></Field>
-              <Field label="Position"><input required value={form.position} onChange={(e) => updateCandidate('position', e.target.value)} placeholder="Product Manager" className="input" /></Field>
+              <Field label="Candidate name"><input required value={form.full_name} onChange={(e) => updateCandidate('full_name', e.target.value)} placeholder="Sara Ahmadi" className={inputCls} /></Field>
+              <Field label="Candidate email"><input required type="email" value={form.email} onChange={(e) => updateCandidate('email', e.target.value)} placeholder="sara@example.com" className={inputCls} /></Field>
+              <Field label="Phone (optional)"><input value={form.phone} onChange={(e) => updateCandidate('phone', e.target.value)} placeholder="+1 555 000 0000" className={inputCls} /></Field>
+              <Field label="Position"><input required value={form.position} onChange={(e) => updateCandidate('position', e.target.value)} placeholder="Product Manager" className={inputCls} /></Field>
             </div>
 
             {/* Custom required documents builder (Part C) */}
             <div>
               <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[13px] font-medium text-ink">Required documents</p>
+                <p className="text-[13px] font-medium text-ink dark:text-night-ink">Required documents</p>
                 <div className="flex items-center gap-2">
                   <Button type="button" variant="ghost" size="sm" icon={Wand2} onClick={loadStandard}>
                     Load standard 4
@@ -227,7 +232,7 @@ export default function CreateOnboarding() {
               </div>
 
               {docs.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-border bg-surface-sunken/40 px-3.5 py-3 text-xs text-ink-faint">
+                <p className="rounded-lg border border-dashed border-border dark:border-night-line bg-surface-sunken/40 dark:bg-night-sunken px-3.5 py-3 text-xs text-ink-faint dark:text-night-ink-faint">
                   No custom documents yet — submitting now seeds the 4 standard defaults (Government ID,
                   Proof of Address, Tax Form W-4, Signed Offer Letter). Use “Load standard 4” to start
                   from them and edit freely, or add your own ({MAX_DOCS} max).
@@ -235,35 +240,35 @@ export default function CreateOnboarding() {
               ) : (
                 <ul className="space-y-2.5">
                   {docs.map((d) => (
-                    <li key={d.id} className="rounded-xl border border-border bg-surface p-3">
+                    <li key={d.id} className="rounded-xl border border-border dark:border-night-line bg-surface dark:bg-night-surface p-3">
                       <div className="flex items-center gap-2">
                         <input
                           value={d.name}
                           onChange={(e) => patchDoc(d.id, 'name', e.target.value)}
                           placeholder="Document name *"
                           aria-invalid={Boolean(docErrors[d.id])}
-                          className={`h-9 flex-1 rounded-lg border bg-surface px-3 text-[13.5px] text-ink focus:outline-none ${
-                            docErrors[d.id] ? 'border-danger' : 'border-border focus:border-brand'
+                          className={`h-9 flex-1 rounded-lg border bg-surface dark:bg-night-surface px-3 text-[13.5px] text-ink dark:text-night-ink focus:outline-none ${
+                            docErrors[d.id] ? 'border-danger' : 'border-border dark:border-night-line focus:border-brand'
                           }`}
                         />
                         <select
                           value={d.document_type}
                           onChange={(e) => patchDoc(d.id, 'document_type', e.target.value)}
-                          className="h-9 rounded-lg border border-border bg-surface px-2 text-[13px] text-ink focus:border-brand focus:outline-none"
+                          className="h-9 rounded-lg border border-border dark:border-night-line bg-surface dark:bg-night-surface px-2 text-[13px] text-ink dark:text-night-ink focus:border-brand focus:outline-none"
                         >
                           {DOC_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                         </select>
                         <button type="button" onClick={() => removeDoc(d.id)} aria-label="Remove document"
-                          className="rounded-lg p-2 text-ink-faint hover:bg-danger-soft hover:text-danger">
+                          className="rounded-lg p-2 text-ink-faint dark:text-night-ink-faint hover:bg-danger-soft hover:text-danger">
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
-                      {docErrors[d.id] && <p className="mt-1 text-xs text-danger">{docErrors[d.id]}</p>}
+                      {docErrors[d.id] && <p className="mt-1 text-xs text-danger dark:text-danger-night">{docErrors[d.id]}</p>}
                       <input
                         value={d.instructions}
                         onChange={(e) => patchDoc(d.id, 'instructions', e.target.value)}
                         placeholder="Instructions for the candidate (optional)"
-                        className="mt-2 h-9 w-full rounded-lg border border-border bg-surface px-3 text-[13px] text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none"
+                        className="mt-2 h-9 w-full rounded-lg border border-border dark:border-night-line bg-surface dark:bg-night-surface px-3 text-[13px] text-ink dark:text-night-ink placeholder:text-ink-faint focus:border-brand focus:outline-none"
                       />
                     </li>
                   ))}
@@ -271,8 +276,8 @@ export default function CreateOnboarding() {
               )}
             </div>
 
-            <div className="flex items-center justify-between border-t border-border-soft pt-5">
-              <Link to="/onboardings" className="flex items-center gap-1.5 text-[13px] font-medium text-ink-soft hover:text-ink">
+            <div className="flex items-center justify-between border-t border-border-soft dark:border-night-line-soft pt-5">
+              <Link to="/onboardings" className="flex items-center gap-1.5 text-[13px] font-medium text-ink-soft dark:text-night-ink-soft hover:text-ink dark:hover:text-night-ink">
                 <ArrowLeft className="h-3.5 w-3.5" /> Cancel
               </Link>
               <Button type="submit" disabled={creating} icon={creating ? Loader2 : undefined}>
@@ -282,11 +287,6 @@ export default function CreateOnboarding() {
           </form>
         </Card>
       </div>
-      <style>{`
-        .input { height: 2.5rem; width: 100%; border-radius: 0.5rem; border: 1px solid var(--color-border, #E5E4DE);
-          background: var(--color-surface, #fff); padding: 0 0.75rem; font-size: 13.5px; color: var(--color-ink, #14171F); }
-        .input:focus { border-color: #0B6E6E; outline: none; }
-      `}</style>
     </div>
   )
 }
@@ -294,7 +294,7 @@ export default function CreateOnboarding() {
 function Field({ label, children }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[13px] font-medium text-ink">{label}</span>
+      <span className="mb-1.5 block text-[13px] font-medium text-ink dark:text-night-ink">{label}</span>
       {children}
     </label>
   )

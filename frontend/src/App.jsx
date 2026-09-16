@@ -53,9 +53,9 @@ export default function App() {
       <Route
         path="*"
         element={
-          <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-paper text-center">
-            <p className="font-display text-lg font-semibold text-ink">Page not found</p>
-            <Link to="/dashboard" className="text-sm font-medium text-brand-dark hover:underline">
+          <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-paper dark:bg-night text-center">
+            <p className="font-display text-lg font-semibold text-ink dark:text-night-ink">Page not found</p>
+            <Link to="/dashboard" className="text-sm font-medium text-brand-dark dark:text-brand-night hover:underline">
               Back to dashboard
             </Link>
           </div>

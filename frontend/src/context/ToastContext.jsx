@@ -31,13 +31,13 @@ export function ToastProvider({ children }) {
           <div
             key={t.id}
             role="status"
-            className="animate-toast-in flex items-start gap-2.5 rounded-xl border border-border bg-ink px-4 py-3 shadow-pop"
+            className="animate-toast-in flex items-start gap-2.5 rounded-xl border border-border dark:border-night-line bg-ink px-4 py-3 shadow-pop"
           >
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color: '#5FCFC0' }} />
-            <p className="flex-1 text-[13px] leading-snug text-white">{t.message}</p>
+            <p className="flex-1 text-[13px] leading-snug text-white dark:text-night-ink">{t.message}</p>
             <button
               onClick={() => dismiss(t.id)}
-              className="shrink-0 rounded-md p-0.5 text-white/50 hover:text-white/90"
+              className="shrink-0 rounded-md p-0.5 text-white/50 hover:text-white/90 dark:text-night-ink/60 dark:hover:text-night-ink"
               aria-label="Dismiss notification"
             >
               <X className="h-3.5 w-3.5" />

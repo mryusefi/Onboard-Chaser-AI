@@ -163,8 +163,9 @@ the new pages. HR auth gained a Login page + AuthContext + RequireAuth guard
 > create-full (no orphan candidates on failure), `POST /auth/token`
 > (Swagger Authorize now works), global 401 → re-login handling in the API
 > client. Features — HR signup UI (`/signup`), custom document builder with
-> `document_type` (Part C). Dark/light theme toggle is its own branch
-> (`feature/theme-toggle`).
+> `document_type` (Part C), and a dark/light theme toggle
+> (`feature/theme-toggle`: Tailwind `darkMode:'class'`, ThemeContext, toggle
+> in the topbar/portal headers; a pre-paint init script avoids a white flash).
 
 ---
 

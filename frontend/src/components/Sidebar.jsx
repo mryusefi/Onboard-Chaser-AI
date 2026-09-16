@@ -21,12 +21,12 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-border bg-surface">
-      <div className="flex h-16 items-center gap-2.5 border-b border-border-soft px-5">
+    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-border dark:border-night-line bg-surface dark:bg-night-surface">
+      <div className="flex h-16 items-center gap-2.5 border-b border-border-soft dark:border-night-line-soft px-5">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white">
           <CheckCircle2 className="h-4 w-4" />
         </span>
-        <span className="font-display text-[15px] font-semibold tracking-tight text-ink">Onboard Chaser</span>
+        <span className="font-display text-[15px] font-semibold tracking-tight text-ink dark:text-night-ink">Onboard Chaser</span>
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">
@@ -37,8 +37,8 @@ export default function Sidebar() {
             className={({ isActive }) =>
               `flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13.5px] font-medium transition-colors ${
                 isActive
-                  ? 'bg-brand-soft text-brand-dark'
-                  : 'text-ink-soft hover:bg-surface-sunken hover:text-ink'
+                  ? 'bg-brand-soft dark:bg-brand-night-soft text-brand-dark dark:text-brand-night'
+                  : 'text-ink-soft dark:text-night-ink-soft hover:bg-surface-sunken dark:hover:bg-night-sunken hover:text-ink dark:hover:text-night-ink'
               }`
             }
           >
@@ -48,19 +48,19 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="border-t border-border-soft p-3">
+      <div className="border-t border-border-soft dark:border-night-line-soft p-3">
         <div className="flex items-center gap-2.5 rounded-lg px-2 py-2">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-navy text-[11px] font-semibold text-white">
             {initials(user?.email?.split('@')[0] || 'HR')}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] font-medium text-ink">{user?.email || 'HR user'}</p>
-            <p className="truncate text-xs text-ink-faint">{user?.role || 'HR Coordinator'}</p>
+            <p className="truncate text-[13px] font-medium text-ink dark:text-night-ink">{user?.email || 'HR user'}</p>
+            <p className="truncate text-xs text-ink-faint dark:text-night-ink-faint">{user?.role || 'HR Coordinator'}</p>
           </div>
           <button
             onClick={handleLogout}
             title="Sign out"
-            className="shrink-0 rounded-md p-1.5 text-ink-faint hover:bg-surface-sunken hover:text-ink"
+            className="shrink-0 rounded-md p-1.5 text-ink-faint dark:text-night-ink-faint hover:bg-surface-sunken dark:hover:bg-night-sunken hover:text-ink dark:hover:text-night-ink"
           >
             <LogOut className="h-4 w-4" />
           </button>

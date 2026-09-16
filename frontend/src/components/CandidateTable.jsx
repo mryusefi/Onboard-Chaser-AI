@@ -19,8 +19,8 @@ function avatarColor(id) {
 export default function CandidateTable({ candidates, loading = false }) {
   if (loading) {
     return (
-      <div className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-16 text-sm text-ink-faint shadow-card">
-        <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+      <div className="flex items-center justify-center gap-2 rounded-2xl border border-border dark:border-night-line bg-surface dark:bg-night-surface py-16 text-sm text-ink-faint dark:text-night-ink-faint shadow-card">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand dark:border-brand-night border-t-transparent" />
         Loading onboardings…
       </div>
     )
@@ -28,18 +28,18 @@ export default function CandidateTable({ candidates, loading = false }) {
 
   if (candidates.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border py-16 text-center">
-        <p className="text-sm font-medium text-ink">No candidates match your filters</p>
-        <p className="text-sm text-ink-faint">Try a different search term or status.</p>
+      <div className="flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border dark:border-night-line py-16 text-center">
+        <p className="text-sm font-medium text-ink dark:text-night-ink">No candidates match your filters</p>
+        <p className="text-sm text-ink-faint dark:text-night-ink-faint">Try a different search term or status.</p>
       </div>
     )
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
+    <div className="overflow-hidden rounded-2xl border border-border dark:border-night-line bg-surface dark:bg-night-surface shadow-card">
       <table className="w-full border-collapse text-left">
         <thead>
-          <tr className="border-b border-border-soft bg-surface-sunken/50 text-xs font-medium uppercase tracking-wide text-ink-faint">
+          <tr className="border-b border-border-soft dark:border-night-line-soft bg-surface-sunken/50 dark:bg-night-sunken text-xs font-medium uppercase tracking-wide text-ink-faint dark:text-night-ink-faint">
             <th className="px-5 py-3">Candidate</th>
             <th className="px-5 py-3">Position</th>
             <th className="px-5 py-3">Progress</th>
@@ -53,7 +53,7 @@ export default function CandidateTable({ candidates, loading = false }) {
           {candidates.map((c) => (
             <tr
               key={c.id}
-              className="group border-b border-border-soft last:border-0 hover:bg-surface-sunken/40"
+              className="group border-b border-border-soft dark:border-night-line-soft last:border-0 hover:bg-surface-sunken/40 dark:hover:bg-night-sunken"
             >
               <td className="px-5 py-3.5">
                 <Link to={`/onboardings/${c.id}`} className="flex items-center gap-3">
@@ -64,18 +64,18 @@ export default function CandidateTable({ candidates, loading = false }) {
                     {initials(c.name)}
                   </span>
                   <span>
-                    <span className="block text-[13.5px] font-medium text-ink group-hover:text-brand-dark">{c.name}</span>
-                    <span className="block text-xs text-ink-faint">{c.email}</span>
+                    <span className="block text-[13.5px] font-medium text-ink dark:text-night-ink group-hover:text-brand-dark">{c.name}</span>
+                    <span className="block text-xs text-ink-faint dark:text-night-ink-faint">{c.email}</span>
                   </span>
                 </Link>
               </td>
-              <td className="px-5 py-3.5 text-[13.5px] text-ink-soft">{c.position || '—'}</td>
+              <td className="px-5 py-3.5 text-[13.5px] text-ink-soft dark:text-night-ink-soft">{c.position || '—'}</td>
               <td className="px-5 py-3.5">
                 <div className="flex items-center gap-2.5">
                   <ProgressBar percent={c.progress.percent} size="sm" className="w-24" />
-                  <span className="tabular font-mono text-xs text-ink-soft">{c.progress.percent}%</span>
+                  <span className="tabular font-mono text-xs text-ink-soft dark:text-night-ink-soft">{c.progress.percent}%</span>
                 </div>
-                <span className="text-[11px] text-ink-faint">
+                <span className="text-[11px] text-ink-faint dark:text-night-ink-faint">
                   {c.progress.completed}/{c.progress.total} documents
                 </span>
               </td>
@@ -87,18 +87,18 @@ export default function CandidateTable({ candidates, loading = false }) {
               </td>
               <td className="px-5 py-3.5">
                 {c.needsAttention ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-danger-soft px-2.5 py-1 text-xs font-medium text-danger">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-danger-soft dark:bg-danger-night-soft px-2.5 py-1 text-xs font-medium text-danger dark:text-danger-night">
                     <AlertTriangle className="h-3.5 w-3.5" />
                     Needs attention
                   </span>
                 ) : (
-                  <span className="text-xs text-ink-faint">—</span>
+                  <span className="text-xs text-ink-faint dark:text-night-ink-faint">—</span>
                 )}
               </td>
               <td className="px-5 py-3.5 text-right">
                 <Link
                   to={`/onboardings/${c.id}`}
-                  className="inline-flex items-center gap-1 text-[13px] font-medium text-ink-soft hover:text-brand-dark"
+                  className="inline-flex items-center gap-1 text-[13px] font-medium text-ink-soft dark:text-night-ink-soft hover:text-brand-dark dark:hover:text-brand-night"
                 >
                   View
                   <ChevronRight className="h-3.5 w-3.5" />

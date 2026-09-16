@@ -25,7 +25,7 @@ export default function Modal({ open, onClose, title, children, footer, size = '
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 dark:bg-black/60 p-4 animate-fade-in"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose?.()
       }}
@@ -36,21 +36,21 @@ export default function Modal({ open, onClose, title, children, footer, size = '
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className={`animate-modal-in w-full ${widthClass} rounded-2xl border border-border bg-surface shadow-pop outline-none`}
+        className={`animate-modal-in w-full ${widthClass} rounded-2xl border border-border dark:border-night-line bg-surface dark:bg-night-surface shadow-pop outline-none`}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-border-soft px-6 py-5">
-          <h2 className="font-display text-lg font-semibold text-ink">{title}</h2>
+        <div className="flex items-start justify-between gap-4 border-b border-border-soft dark:border-night-line-soft px-6 py-5">
+          <h2 className="font-display text-lg font-semibold text-ink dark:text-night-ink">{title}</h2>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="-m-1 shrink-0 rounded-lg p-1.5 text-ink-faint hover:bg-surface-sunken hover:text-ink"
+            className="-m-1 shrink-0 rounded-lg p-1.5 text-ink-faint dark:text-night-ink-faint hover:bg-surface-sunken dark:hover:bg-night-sunken hover:text-ink dark:hover:text-night-ink"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
         <div className="px-6 py-5">{children}</div>
         {footer ? (
-          <div className="flex items-center justify-end gap-2.5 border-t border-border-soft px-6 py-4">
+          <div className="flex items-center justify-end gap-2.5 border-t border-border-soft dark:border-night-line-soft px-6 py-4">
             {footer}
           </div>
         ) : null}

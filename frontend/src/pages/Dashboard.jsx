@@ -13,23 +13,23 @@ import { useAuth } from '../context/AuthContext'
 
 function SummaryCard({ label, value, Icon, tone, loading }) {
   const toneClasses = {
-    brand: 'bg-brand-soft text-brand-dark',
-    warning: 'bg-warning-soft text-warning',
-    success: 'bg-success-soft text-success',
-    danger: 'bg-danger-soft text-danger',
+    brand: 'bg-brand-soft dark:bg-brand-night-soft text-brand-dark dark:text-brand-night',
+    warning: 'bg-warning-soft dark:bg-warning-night-soft text-warning dark:text-warning-night',
+    success: 'bg-success-soft dark:bg-success-night-soft text-success dark:text-success-night',
+    danger: 'bg-danger-soft dark:bg-danger-night-soft text-danger dark:text-danger-night',
   }
   return (
     <Card className="p-5">
       <div className="flex items-center justify-between">
-        <p className="text-[13px] font-medium text-ink-soft">{label}</p>
+        <p className="text-[13px] font-medium text-ink-soft dark:text-night-ink-soft">{label}</p>
         <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${toneClasses[tone]}`}>
           <Icon className="h-4 w-4" />
         </span>
       </div>
       {loading ? (
-        <div className="mt-3 h-9 w-14 animate-pulse rounded-lg bg-surface-sunken" />
+        <div className="mt-3 h-9 w-14 animate-pulse rounded-lg bg-surface-sunken dark:bg-night-sunken" />
       ) : (
-        <p className="mt-3 font-display text-3xl font-semibold tracking-tight text-ink">{value}</p>
+        <p className="mt-3 font-display text-3xl font-semibold tracking-tight text-ink dark:text-night-ink">{value}</p>
       )}
     </Card>
   )
@@ -89,7 +89,7 @@ export default function Dashboard() {
 
       <div className="px-8 py-7">
         {error && (
-          <div className="mb-4 rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger">
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger-soft dark:bg-danger-night-soft px-4 py-3 text-sm text-danger dark:text-danger-night">
             {error}
           </div>
         )}
@@ -121,14 +121,14 @@ export default function Dashboard() {
 
         <div className="mt-8">
           <div className="mb-3.5 flex items-center justify-between">
-            <h2 className="font-display text-base font-semibold text-ink">Onboardings</h2>
-            <Link to="/onboardings" className="text-[13px] font-medium text-brand-dark hover:underline">
+            <h2 className="font-display text-base font-semibold text-ink dark:text-night-ink">Onboardings</h2>
+            <Link to="/onboardings" className="text-[13px] font-medium text-brand-dark dark:text-brand-night hover:underline">
               View all
             </Link>
           </div>
           <CandidateTable candidates={items.slice(0, 5)} loading={loading} />
           {attentionRows.length > 0 && (
-            <p className="mt-3 flex items-center gap-1.5 text-[13px] text-warning">
+            <p className="mt-3 flex items-center gap-1.5 text-[13px] text-warning dark:text-warning-night">
               <AlertTriangle className="h-3.5 w-3.5" />
               {attentionRows.length} onboarding{attentionRows.length === 1 ? '' : 's'} need
               {attentionRows.length === 1 ? 's' : ''} attention right now.

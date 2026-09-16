@@ -39,7 +39,7 @@ function VerificationControls({ doc, onVerified }) {
           <button
             onClick={() => setStatus('verified')}
             disabled={busy}
-            className="flex items-center gap-1 rounded-lg bg-success-soft px-2.5 py-1.5 text-xs font-semibold text-success transition-colors hover:opacity-80 disabled:opacity-50"
+            className="flex items-center gap-1 rounded-lg bg-success-soft dark:bg-success-night-soft px-2.5 py-1.5 text-xs font-semibold text-success dark:text-success-night transition-colors hover:opacity-80 disabled:opacity-50"
           >
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : '✓'} Verify
           </button>
@@ -48,7 +48,7 @@ function VerificationControls({ doc, onVerified }) {
           <button
             onClick={() => setShowNote((v) => !v)}
             disabled={busy}
-            className="flex items-center gap-1 rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs font-semibold text-danger transition-colors hover:opacity-80 disabled:opacity-50"
+            className="flex items-center gap-1 rounded-lg bg-danger-soft dark:bg-danger-night-soft px-2.5 py-1.5 text-xs font-semibold text-danger dark:text-danger-night transition-colors hover:opacity-80 disabled:opacity-50"
           >
             ✕ Reject
           </button>
@@ -58,7 +58,7 @@ function VerificationControls({ doc, onVerified }) {
             onClick={() => setStatus('unverified')}
             disabled={busy}
             title="Reset verification"
-            className="rounded-lg p-1.5 text-ink-faint hover:bg-surface-sunken hover:text-ink disabled:opacity-50"
+            className="rounded-lg p-1.5 text-ink-faint dark:text-night-ink-faint hover:bg-surface-sunken dark:hover:bg-night-sunken hover:text-ink dark:hover:text-night-ink disabled:opacity-50"
           >
             <Undo2 className="h-3.5 w-3.5" />
           </button>
@@ -70,12 +70,12 @@ function VerificationControls({ doc, onVerified }) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Rejection reason (optional)…"
-            className="h-9 flex-1 rounded-lg border border-border bg-surface px-3 text-[13px] text-ink focus:border-brand focus:outline-none"
+            className="h-9 flex-1 rounded-lg border border-border dark:border-night-line bg-surface dark:bg-night-surface px-3 text-[13px] text-ink dark:text-night-ink focus:border-brand focus:outline-none"
           />
           <button
             onClick={() => setStatus('rejected')}
             disabled={busy}
-            className="rounded-lg bg-danger px-3 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
+            className="rounded-lg bg-danger dark:bg-danger-night px-3 py-2 text-xs font-semibold text-white dark:text-night hover:opacity-90 disabled:opacity-50"
           >
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Confirm'}
           </button>
@@ -93,31 +93,31 @@ export default function DocumentRow({ doc, variant = 'hr', onPreview, onVerified
     return (
       <div
         className={`rounded-xl border px-4 py-4 ${
-          isDone ? 'border-success/20 bg-success-soft/40' : 'border-border bg-surface'
+          isDone ? 'border-success/20 bg-success-soft/40' : 'border-border dark:border-night-line bg-surface dark:bg-night-surface'
         }`}
       >
         <div className="flex items-start gap-3">
           {isDone ? (
-            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success" />
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success dark:text-success-night" />
           ) : (
-            <Circle className="mt-0.5 h-5 w-5 shrink-0 text-ink-faint" />
+            <Circle className="mt-0.5 h-5 w-5 shrink-0 text-ink-faint dark:text-night-ink-faint" />
           )}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-              <p className="text-[14px] font-medium text-ink">{doc.name}</p>
+              <p className="text-[14px] font-medium text-ink dark:text-night-ink">{doc.name}</p>
               {doc.required ? (
-                <span className="text-xs font-medium text-ink-faint">Required</span>
+                <span className="text-xs font-medium text-ink-faint dark:text-night-ink-faint">Required</span>
               ) : (
-                <span className="text-xs font-medium text-ink-faint">Optional</span>
+                <span className="text-xs font-medium text-ink-faint dark:text-night-ink-faint">Optional</span>
               )}
             </div>
             {hasFile ? (
-              <p className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-soft">
+              <p className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-soft dark:text-night-ink-soft">
                 <FileText className="h-3.5 w-3.5" />
                 {doc.file_name} · Uploaded {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString() : '—'}
               </p>
             ) : (
-              <p className="mt-0.5 text-[13px] text-ink-soft">{doc.instructions || 'Please upload this document.'}</p>
+              <p className="mt-0.5 text-[13px] text-ink-soft dark:text-night-ink-soft">{doc.instructions || 'Please upload this document.'}</p>
             )}
             {!isDone && children ? <div className="mt-3">{children}</div> : null}
           </div>
@@ -128,35 +128,35 @@ export default function DocumentRow({ doc, variant = 'hr', onPreview, onVerified
 
   // ── HR variant ─────────────────────────────────────────────────────────
   return (
-    <div className="border-b border-border-soft px-1 py-4 last:border-0">
+    <div className="border-b border-border-soft dark:border-night-line-soft px-1 py-4 last:border-0">
       <div className="flex items-start gap-3.5">
         {isDone ? (
-          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success" />
+          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success dark:text-success-night" />
         ) : doc.status === 'missing' ? (
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-danger" />
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-danger dark:text-danger-night" />
         ) : (
-          <Circle className="mt-0.5 h-5 w-5 shrink-0 text-ink-faint" />
+          <Circle className="mt-0.5 h-5 w-5 shrink-0 text-ink-faint dark:text-night-ink-faint" />
         )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[14px] font-medium text-ink">{doc.name}</p>
+            <p className="text-[14px] font-medium text-ink dark:text-night-ink">{doc.name}</p>
             <Badge status={doc.status} withIcon={false} />
             <Badge status={doc.verification_status} withIcon={false} />
           </div>
           {hasFile ? (
             <button
               onClick={() => onPreview?.(doc)}
-              className="mt-1 flex items-center gap-1.5 text-xs text-ink-soft underline decoration-border underline-offset-2 hover:text-brand-dark"
+              className="mt-1 flex items-center gap-1.5 text-xs text-ink-soft dark:text-night-ink-soft underline decoration-border underline-offset-2 hover:text-brand-dark dark:hover:text-brand-night"
             >
               <FileText className="h-3.5 w-3.5" />
               {doc.file_name} · {doc.file_size ? `${Math.max(1, Math.round(parseInt(doc.file_size, 10) / 1024))} KB` : '—'} ·
               Uploaded {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString() : '—'}
             </button>
           ) : (
-            <p className="mt-1 text-xs text-ink-faint">Not submitted</p>
+            <p className="mt-1 text-xs text-ink-faint dark:text-night-ink-faint">Not submitted</p>
           )}
           {doc.verification_note && (
-            <p className="mt-1 text-xs italic text-ink-soft">“{doc.verification_note}”</p>
+            <p className="mt-1 text-xs italic text-ink-soft dark:text-night-ink-soft">“{doc.verification_note}”</p>
           )}
         </div>
         {canVerifyRow(doc) && (

@@ -6,7 +6,7 @@ import Sidebar from '../components/Sidebar'
 
 export default function HRLayout() {
   return (
-    <div className="flex min-h-screen bg-paper">
+    <div className="flex min-h-screen bg-paper dark:bg-night">
       <Sidebar />
       <main className="min-w-0 flex-1">
         <Outlet />

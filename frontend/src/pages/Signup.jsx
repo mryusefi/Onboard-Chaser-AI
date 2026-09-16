@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { CheckCircle2, Loader2, AlertCircle } from 'lucide-react'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
+import ThemeToggle from '../components/ThemeToggle'
 import { register as apiRegister, login as apiLogin } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 
@@ -74,20 +75,23 @@ export default function Signup() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-paper px-4">
-      <div className="mb-6 flex items-center gap-2.5">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-paper dark:bg-night px-4">
+      <div className="mb-6 flex w-full max-w-sm items-center gap-2.5">
         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand text-white">
           <CheckCircle2 className="h-5 w-5" />
         </span>
-        <span className="font-display text-lg font-semibold tracking-tight text-ink">Onboard Chaser</span>
+        <span className="font-display text-lg font-semibold tracking-tight text-ink dark:text-night-ink">Onboard Chaser</span>
+        <span className="ml-auto">
+          <ThemeToggle />
+        </span>
       </div>
 
       <Card className="w-full max-w-sm p-7">
-        <h1 className="font-display text-xl font-semibold text-ink">Create an HR account</h1>
-        <p className="mt-1 text-sm text-ink-soft">Set up sign-in to manage onboardings.</p>
+        <h1 className="font-display text-xl font-semibold text-ink dark:text-night-ink">Create an HR account</h1>
+        <p className="mt-1 text-sm text-ink-soft dark:text-night-ink-soft">Set up sign-in to manage onboardings.</p>
 
         {error && (
-          <div className="mt-4 flex items-start gap-2 rounded-xl border border-danger/25 bg-danger-soft px-3.5 py-3 text-[13px] text-danger">
+          <div className="mt-4 flex items-start gap-2 rounded-xl border border-danger/25 bg-danger-soft dark:bg-danger-night-soft px-3.5 py-3 text-[13px] text-danger dark:text-danger-night">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
           </div>
         )}
@@ -107,9 +111,9 @@ export default function Signup() {
           </Button>
         </form>
 
-        <p className="mt-5 border-t border-border-soft pt-4 text-center text-[13px] text-ink-soft">
+        <p className="mt-5 border-t border-border-soft dark:border-night-line-soft pt-4 text-center text-[13px] text-ink-soft dark:text-night-ink-soft">
           Already have an account?{' '}
-          <Link to="/login" className="font-medium text-brand-dark hover:underline">Log in</Link>
+          <Link to="/login" className="font-medium text-brand-dark dark:text-brand-night hover:underline">Log in</Link>
         </p>
       </Card>
     </div>
@@ -120,7 +124,7 @@ function FormField({ label, id, type = 'text', value, onChange, error, placehold
   const invalid = Boolean(error)
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[13px] font-medium text-ink">{label}</span>
+      <span className="mb-1.5 block text-[13px] font-medium text-ink dark:text-night-ink">{label}</span>
       <input
         id={id}
         type={type}
@@ -129,14 +133,14 @@ function FormField({ label, id, type = 'text', value, onChange, error, placehold
         placeholder={placeholder}
         autoComplete={autoComplete}
         aria-invalid={invalid}
-        className={`h-10 w-full rounded-lg border bg-surface px-3 text-[13.5px] text-ink focus:outline-none ${
-          invalid ? 'border-danger' : 'border-border focus:border-brand'
+        className={`h-10 w-full rounded-lg border bg-surface dark:bg-night-surface px-3 text-[13.5px] text-ink dark:text-night-ink focus:outline-none ${
+          invalid ? 'border-danger' : 'border-border dark:border-night-line focus:border-brand'
         }`}
       />
       {error ? (
-        <span className="mt-1 block text-xs text-danger">{error}</span>
+        <span className="mt-1 block text-xs text-danger dark:text-danger-night">{error}</span>
       ) : hint ? (
-        <span className="mt-1 block text-xs text-ink-faint">{hint}</span>
+        <span className="mt-1 block text-xs text-ink-faint dark:text-night-ink-faint">{hint}</span>
       ) : null}
     </label>
   )
