@@ -30,6 +30,7 @@ from app.services.onboarding_service import (
     compute_completion_percentage,
     update_document_status,
     list_onboardings,
+    MAX_DOCUMENTS_PER_ONBOARDING,
 )
 from app.services.email_service import send_invitation as send_email, is_email_configured
 from app.services.reminder_service import send_reminder, REMINDER_TYPE_MIDWAY
@@ -138,6 +139,20 @@ def create_full_onboarding_endpoint(
             )
         if msg == "no_hr_user":
             raise HTTPException(status_code=400, detail="No HR user exists yet. Register first.")
+        # Part C sanity/validation errors -> 422 (input is well-formed but
+        # semantically out of range).
+        if msg == "at_least_one_document":
+            raise HTTPException(status_code=422, detail="At least one document is required")
+        if msg == "too_many_documents":
+            raise HTTPException(
+                status_code=422,
+                detail=f"At most {MAX_DOCUMENTS_PER_ONBOARDING} documents are allowed",
+            )
+        if msg == "invalid_document_type":
+            raise HTTPException(
+                status_code=422,
+                detail="document_type must be one of: image, pdf_document, file",
+            )
         raise HTTPException(status_code=400, detail=msg)
     except IntegrityError:
         # A unique constraint still fired (e.g. two concurrent submits of the
@@ -193,6 +208,19 @@ def start_onboarding(
         if msg == "onboarding_exists":
             raise HTTPException(
                 status_code=409, detail="Onboarding already exists for this candidate"
+            )
+        # Part C sanity/validation errors -> 422 (same mapping as create-full)
+        if msg == "at_least_one_document":
+            raise HTTPException(status_code=422, detail="At least one document is required")
+        if msg == "too_many_documents":
+            raise HTTPException(
+                status_code=422,
+                detail=f"At most {MAX_DOCUMENTS_PER_ONBOARDING} documents are allowed",
+            )
+        if msg == "invalid_document_type":
+            raise HTTPException(
+                status_code=422,
+                detail="document_type must be one of: image, pdf_document, file",
             )
         raise HTTPException(status_code=400, detail=msg)
 

@@ -24,6 +24,26 @@ class DocumentStatus(str, enum.Enum):
     MISSING = "missing"
 
 
+class DocumentType(str, enum.Enum):
+    """
+    Maintenance pass Part C — what KIND of artifact a required document is.
+
+    Categorization only: the upload validation still runs off
+    ``accepted_formats`` (extension whitelist in document_service), so the
+    type drives the default formats offered at creation time, not the
+    security rules.
+
+    NOTE (deferred by design): a `text_input` type (free-text answer instead
+    of a file) is NOT implemented here — it needs a portal text-answer UI,
+    storage semantics for non-file answers, and verification handling for
+    text; that's a proper follow-up story rather than half-built in a
+    maintenance pass.
+    """
+    IMAGE = "image"                # photos/scans -> JPG, PNG, GIF
+    PDF_DOCUMENT = "pdf_document"  # signed forms -> PDF
+    FILE = "file"                  # anything allowed -> PDF, JPG, PNG, GIF
+
+
 class DocumentVerificationStatus(str, enum.Enum):
     """
     US11 — HR-driven manual verification of an uploaded document.
@@ -155,6 +175,10 @@ class Document(Base):
     instructions = Column(Text, nullable=True)
     required = Column(Boolean, default=True)
     accepted_formats = Column(String(255), nullable=True)
+    # Maintenance pass Part C: categorization of what the document IS
+    # (image / pdf_document / file). Upload validation still keys off
+    # accepted_formats; nullable so pre-existing rows are unaffected.
+    document_type = Column(SAEnum(DocumentType), nullable=True)
     status = Column(SAEnum(DocumentStatus), default=DocumentStatus.PENDING)
     file_key = Column(String(512), nullable=True)
     file_name = Column(String(255), nullable=True)
