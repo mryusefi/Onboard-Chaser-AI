@@ -91,10 +91,13 @@ export default function Login() {
           </Button>
         </form>
 
-        <p className="mt-5 border-t border-border-soft pt-4 text-xs text-ink-faint">
-          First time setup: register the HR account via{' '}
-          <code className="font-mono text-[11px]">POST /api/v1/auth/register</code> (no UI by
-          design in the MVP). Candidates never sign in — they use magic links.
+        <p className="mt-5 border-t border-border-soft pt-4 text-center text-[13px] text-ink-soft">
+          Need an account?{' '}
+          <Link to="/signup" className="font-medium text-brand-dark hover:underline">Sign up</Link>
+        </p>
+
+        <p className="mt-3 text-center text-xs text-ink-faint">
+          Candidates never sign in — they use magic links.
         </p>
       </Card>
     </div>
