@@ -2,11 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: #f8fafc;
+/* US12-frontend — base styles translated from the prepared UI kit
+   (src-new/index.css) to the v3 pipeline. Design tokens live in
+   tailwind.config.js; animations + scrollbar styling carried over. */
+
+html {
+  -webkit-font-smoothing: antialiased;
 }
 
+body {
+  background-color: #fafaf8; /* paper */
+  color: #14171f; /* ink */
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+:focus-visible {
+  outline: 2px solid #0b6e6e; /* brand */
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* subtle scrollbar for a polished feel */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d8d7d0;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c7c6be;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-toast-in {
+  animation: toast-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-modal-in {
+  animation: modal-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fade-in {
+  animation: fade-in 0.25s ease-out;
+}
+
+/* legacy helper from the per-story pages (gradient hero); kept until the
+   old HomePage is confirmed unused, then removable */
 .gradient-bg {
   background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
 }

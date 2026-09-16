@@ -81,17 +81,81 @@ MVP_Project/
     ├── Dockerfile
     ├── package.json
     ├── vite.config.js            # dev server + /api proxy → VITE_API_URL || localhost:8000
-    ├── tailwind.config.js
+    ├── tailwind.config.js        # design tokens (paper/ink/brand/success/…, from the UI kit)
     ├── postcss.config.js
     ├── index.html
     └── src/
-        ├── main.jsx              # React entry, BrowserRouter
-        ├── App.jsx               # Routes: /, /onboard/:token, /admin/onboarding, /admin/onboarding/new, /admin/onboarding/:id, /admin/settings/reminders
-        ├── index.css             # Tailwind + gradient helper
-        └── pages/
-            ├── HomePage.jsx              # Landing page
-            └── OnboardingPortal.jsx    # Checklist + upload UI + progress card (server-driven %)
+        ├── main.jsx              # React entry: AuthProvider → ToastProvider → OnboardingProvider
+        ├── App.jsx               # Route map (see "Frontend UI Adoption" below)
+        ├── index.css             # Tailwind layers + animations from the UI kit
+        ├── api/
+        │   └── client.js         # single API layer: fetch + JWT attach + typed errors
+        ├── components/
+        │   ├── Sidebar.jsx       # HR nav (Dashboard/Onboardings/Reminders) + logout
+        │   ├── Topbar.jsx        # page header (eyebrow/title/actions)
+        │   ├── CandidateTable.jsx# onboardings table w/ progress, invitation, attention
+        │   ├── DocumentRow.jsx   # document status/verification row (+ controls)
+        │   ├── ChaseTrail.jsx    # reminder-history timeline (US08 trail)
+        │   ├── RequireAuth.jsx   # HR route guard → /login
+        │   └── ui/               # Button, Card, Badge, ProgressBar, Modal, FileUpload
+        ├── context/
+        │   ├── AuthContext.jsx   # HR session (JWT signal + user info)
+        │   ├── OnboardingContext.jsx # real data layer over the API client
+        │   └── ToastContext.jsx  # toast notifications
+        ├── layouts/
+        │   ├── HRLayout.jsx      # sidebar shell for /dashboard /onboardings /reminders
+        │   └── CandidateLayout.jsx # centered shell for /onboard/:token
+        ├── pages/
+        │   ├── Login.jsx             # HR sign-in (POST /auth/login)
+        │   ├── Dashboard.jsx         # summary cards + recent list (US10)
+        │   ├── Onboardings.jsx       # full list: search/filter/pagination (US10)
+        │   ├── CandidateDetail.jsx   # documents, verification, preview, trail (US11)
+        │   ├── CreateOnboarding.jsx  # create-full + invitation (US06/US07)
+        │   ├── Reminders.jsx         # reminder configuration (US09)
+        │   └── CandidatePortal.jsx   # token-based candidate checklist (US01–US05)
+        └── utils/
+            └── format.js             # date/initials formatting helpers
 ```
+
+### Frontend UI Adoption (post-US11)
+
+The incrementally-built per-story frontend was consolidated onto the prepared
+UI kit (Sidebar/Topbar/CandidateTable/DocumentRow/ChaseTrail + ui/ primitives,
+HRLayout/CandidateLayout, contexts). All real backend integration was
+preserved — only the presentation layer changed. `data/mockData.js` and the
+in-memory context were removed; every action now flows through
+`src/api/client.js` against the live FastAPI backend.
+
+Final route map:
+
+| Route | Auth | Page (kit) | Backend |
+|-------|------|-----------|---------|
+| `/login` | public | Login | `POST /api/v1/auth/login` |
+| `/dashboard` | HR | Dashboard | `GET /api/v1/onboarding/` (summary + recent) |
+| `/onboardings` | HR | Onboardings | `GET /api/v1/onboarding/` (status/needs_attention/search/page/page_size) |
+| `/onboardings/:id` | HR | CandidateDetail | `GET .../detail`, `GET /documents/{id}/access-url`, `PATCH /documents/{id}/verification`, `GET .../reminders` |
+| `/create-onboarding` | HR | CreateOnboarding | `POST /onboarding/create-full` then `POST .../send-invitation` |
+| `/reminders` | HR | Reminders | `GET`/`PUT /api/v1/settings/reminders` |
+| `/onboard/:token` | **magic link** | CandidatePortal | `GET /onboarding/portal/{token}`, `POST .../document/{id}/upload` |
+
+> **Security decision — do not revert:** the candidate portal is routed
+> `/onboard/:token` (signed, expiring magic link), NOT `/candidate/:id` as in
+> the static prototype. A guessable candidate ID would expose every
+> candidate's documents to anyone; the token-based flow (magic link
+> validation, expiry, single-use semantics) is unchanged from US01 and must
+> stay that way (README section 8).
+
+Old per-story pages removed after parity was confirmed:
+`HomePage.jsx`, `CreateOnboardingPage.jsx`, `OnboardingDashboardPage.jsx`,
+`OnboardingDetailPage.jsx`, `OnboardingPortal.jsx`, `ReminderSettingsPage.jsx`,
+`components/AdminNav.jsx`, `components/ReminderHistory.jsx`,
+`utils/api.js`. Capability carry-over checklist: short-lived access-URL
+preview/download (fresh URL per click), verify/reject with note +
+reset, reminder history (ChaseTrail), debounced search, server-side
+status/needs_attention filters, pagination, needs-attention badge, 10 MB /
+extension upload validation, magic-link error/expiry states — all present in
+the new pages. HR auth gained a Login page + AuthContext + RequireAuth guard
+(the kit prototype had no auth screen).
 
 ---
 

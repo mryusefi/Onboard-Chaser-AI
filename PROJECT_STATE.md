@@ -9,11 +9,11 @@
 - GitHub: `https://github.com/mryusefi/Onboard-Chaser-AI.git`
 
 ## Current Git State
-- **Branch:** `feature/candidate-detail-verification` (US11; stacked on US10 → US09 → US08 — none merged as of this story)
-- **Latest commit:** `89c7945 chore: README for US11 (story table, US11 section, endpoints, DB model, manual-verification scope note)`
-- **Status:** US10 merged to main by user; US11 committed on its branch; push pending
-- **Tests:** 178 passing (US01:12, US02:11, US03:18, US04:12, US05:14, US06:17, US07:6, US08:31, US09:17, US10:21, US11:18)
-- Frontend build verified (`npx vite build`, exit 0)
+- **Branch:** `feature/ui-kit-adoption` (frontend reskin/architecture; backend untouched)
+- **Latest commit:** `5b2ebfc chore: README — new frontend/src structure, Frontend UI Adoption section with route map and /onboard/:token security note`
+- **Status:** frontend consolidated onto the prepared UI kit; push pending; nothing merged
+- **Backend tests:** 178 passing (backend untouched by this story — no API changes)
+- **Frontend:** `npx vite build` exit 0; structural checks pass (routes, API wiring, no mock remnants)
 
 ## Completed User Stories (US01–US07)
 All merged to main via feature branches. Plane epic + sub-tasks for each marked Done.
@@ -24,9 +24,23 @@ All merged to main via feature branches. Plane epic + sub-tasks for each marked 
 - **US08:** COMPLETE on `feature/automated-reminders` (merged via main)
 - **US09:** COMPLETE on `feature/reminder-config` (pushed)
 - **US10:** COMPLETE on `feature/hr-dashboard` (merged via `ba6d13c`)
-- **US11:** COMPLETE on `feature/candidate-detail-verification` (this branch)
+- **US11:** COMPLETE on `feature/candidate-detail-verification` (pushed)
 - US12 (AI document verification) remains POST-MVP / out of scope — US11
   deliberately implements MANUAL HR verification only.
+- **Frontend UI Adoption (this story):** the per-story frontend was replaced
+  by the prepared UI kit — see the "Frontend UI Adoption" section of the
+  README for the final route map and the /onboard/:token security decision.
+  Removed old pages: HomePage, CreateOnboardingPage, OnboardingDashboardPage,
+  OnboardingDetailPage, OnboardingPortal, ReminderSettingsPage, AdminNav,
+  ReminderHistory, utils/api.js. New: api/client.js (single fetch layer),
+  AuthContext + Login + RequireAuth guard, HRLayout/CandidateLayout, and the
+  kit's components (Sidebar, Topbar, CandidateTable, DocumentRow, ChaseTrail,
+  ui/*). Tailwind tokens from the kit's v4 @theme block were translated into
+  the v3 tailwind.config.js (names preserved: paper/ink/brand/success/…).
+  The prototype's data/mockData.js was NOT copied into src/ — all data now
+  comes from the real backend via OnboardingContext.
+- **Login credentials note:** the MVP has no register UI; create the HR
+  account via POST /api/v1/auth/register, then sign in at /login.
 
 ## US11 — What Was Built (branch `feature/candidate-detail-verification`)
 - `DocumentVerificationStatus` enum + Document fields: verification_status

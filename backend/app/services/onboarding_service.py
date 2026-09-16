@@ -50,12 +50,17 @@ DEFAULT_DOCUMENTS = [
 ]
 
 
-def create_candidate(db: Session, data) -> Candidate:
+def create_candidate(db: Session, data, commit: bool = True) -> Candidate:
     """
     Create a new candidate record (US06).
 
     Raises ValueError('duplicate_email') when a candidate with the same email
-    already exists -> routes translate this into HTTP 409.
+    already exists -> routes translate this into HTTP 409. The duplicate
+    check happens BEFORE the insert, so a duplicate always surfaces as 409
+    (never a raw 500 from the unique constraint).
+
+    commit=False keeps the row in the session's transaction (used by
+    create_full_onboarding to make the whole flow atomic); the caller commits.
     """
     existing = db.query(Candidate).filter(Candidate.email == data.email).first()
     if existing:
@@ -73,8 +78,11 @@ def create_candidate(db: Session, data) -> Candidate:
         created_by=hr_user.id,
     )
     db.add(candidate)
-    db.commit()
-    db.refresh(candidate)
+    if commit:
+        db.commit()
+        db.refresh(candidate)
+    else:
+        db.flush()  # assign the PK without ending the transaction
     return candidate
 
 
@@ -82,6 +90,7 @@ def create_onboarding_for_candidate(
     db: Session,
     candidate_id: UUID,
     required_documents: list[dict] | None = None,
+    commit: bool = True,
 ) -> tuple[Onboarding, list[Document]]:
     """
     Create an onboarding process and seed its required documents (US06).
@@ -94,6 +103,9 @@ def create_onboarding_for_candidate(
 
     The new onboarding always starts as PENDING; it moves to IN_PROGRESS only
     when the candidate first opens the portal (existing US01 behavior).
+
+    commit=False keeps the work in the caller's transaction (used by
+    create_full_onboarding for an all-or-nothing flow).
     """
     candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
     if not candidate:
@@ -130,29 +142,40 @@ def create_onboarding_for_candidate(
         db.add(doc)
         created_docs.append(doc)
 
-    db.commit()
-    db.refresh(onboarding)
+    if commit:
+        db.commit()
+        db.refresh(onboarding)
+    else:
+        db.flush()
     return onboarding, created_docs
 
 
 def create_full_onboarding(db: Session, payload) -> dict:
     """
-    Convenience flow (US06): create the candidate AND the onboarding in one
-    transactional service call. Used by POST /onboarding/create-full.
+    Convenience flow (US06): create the candidate AND the onboarding (+
+    seeded documents) in ONE transaction. Used by POST /onboarding/create-full.
+
+    Atomicity fix (maintenance pass): each step used to commit separately,
+    so a failure after the candidate commit left an orphaned candidate with
+    no onboarding — the next attempt then returned a confusing 409
+    "Candidate already exists" even though the first submit never succeeded.
+    Any failure now rolls the whole flow back; duplicates are rejected up
+    front by create_candidate with a clean ValueError -> HTTP 409.
     """
-    candidate = create_candidate(db, payload.candidate)
     try:
+        candidate = create_candidate(db, payload.candidate, commit=False)
         onboarding, documents = create_onboarding_for_candidate(
             db, candidate.id,
             [d.model_dump() for d in payload.required_documents]
             if payload.required_documents else None,
+            commit=False,
         )
-    except ValueError:
-        # Roll back the just-created candidate so we don't leave orphans.
-        db.rollback()
-        db.delete(candidate)
         db.commit()
+    except Exception:
+        db.rollback()
         raise
+    db.refresh(candidate)
+    db.refresh(onboarding)
     return candidate, onboarding, documents
 
 

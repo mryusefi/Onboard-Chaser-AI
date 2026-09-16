@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.database import engine, Base
+from app.core.schema_bootstrap import reconcile_additive_schema
 from app.api import auth, onboarding, candidates
 # Aliased: `from app.api import settings` would shadow app.core.config.settings above.
 from app.api.settings import router as settings_router
@@ -18,6 +19,11 @@ async def lifespan(app: FastAPI):
     # Only create tables if not in test mode
     if os.environ.get("TESTING") != "1":
         Base.metadata.create_all(bind=engine)
+        # create_all never ALTERs existing tables; reconcile additive column
+        # drift from the models so a long-lived dev DB gains new fields
+        # (fixes the US07+ UndefinedColumn 500s). Alembic remains the
+        # production path (README section 6).
+        reconcile_additive_schema(engine, Base)
     yield
 
 app = FastAPI(
