@@ -7,6 +7,7 @@ import Onboardings from './pages/Onboardings'
 import CandidateDetail from './pages/CandidateDetail'
 import CreateOnboarding from './pages/CreateOnboarding'
 import Reminders from './pages/Reminders'
+import EmailSettings from './pages/EmailSettings'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import CandidatePortal from './pages/CandidatePortal'
@@ -20,6 +21,7 @@ import CandidatePortal from './pages/CandidatePortal'
 //                           access-URL preview/download, reminder trail)
 //   /create-onboarding    → create flow (US06) + invitation (US07)
 //   /reminders            → reminder configuration (US09)
+//   /settings/email       → email delivery status + invitation template (Item 1/1b)
 //   /login                → HR sign-in (no guard)
 //   /signup               → HR account creation (no guard; maintenance Part B)
 //
@@ -42,6 +44,7 @@ export default function App() {
           <Route path="/onboardings/:id" element={<CandidateDetail />} />
           <Route path="/create-onboarding" element={<CreateOnboarding />} />
           <Route path="/reminders" element={<Reminders />} />
+          <Route path="/settings/email" element={<EmailSettings />} />
         </Route>
       </Route>
 

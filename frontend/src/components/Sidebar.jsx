@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, ListChecks, BellRing, CheckCircle2, LogOut } from 'lucide-react'
+import { LayoutDashboard, ListChecks, BellRing, Mail, CheckCircle2, LogOut } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { logout } from '../api/client'
 import { initials } from '../utils/format'
@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/onboardings', label: 'Onboardings', icon: ListChecks },
   { to: '/reminders', label: 'Reminders', icon: BellRing },
+  { to: '/settings/email', label: 'Email', icon: Mail },
 ]
 
 export default function Sidebar() {
