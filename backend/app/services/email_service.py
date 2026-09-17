@@ -40,10 +40,16 @@ EMAIL_TEMPLATE = """\
       <h1>Welcome to {{ company_name }}</h1>
     </div>
 
-    <p>Hello {{ candidate_name }},</p>
+    <p>
+      {% if body_intro %}{{ body_intro }}{% else %}Hello {{ candidate_name }},
+      You have been invited to complete onboarding for <strong>{{ company_name }}</strong>.
+      Your position is <strong>{{ position }}</strong>.{% endif %}
+    </p>
 
-    <p>You have been invited to complete onboarding for <strong>{{ company_name }}</strong>.
-    Your position is <strong>{{ position }}</strong>.</p>
+    {% if extra_instructions %}
+    <p class="bullet"><strong>Note from our HR team:</strong></p>
+    <p class="bullet">{{ extra_instructions }}</p>
+    {% endif %}
 
     <p>Below is a <strong>secure portal link</strong> that will expire after
     <strong>{{ expiry_hours }} hour{% if expiry_hours != 1 %}s{% endif %}</strong>.</p>
@@ -65,9 +71,13 @@ EMAIL_TEMPLATE = """\
       {% endfor %}
     </ul>
 
+    {% if body_closing %}
+    <p style="margin-top:24px">{{ body_closing }}</p>
+    {% else %}
     <p style="margin-top:24px">
       If you have any questions, reply to this email or contact our HR team.
     </p>
+    {% endif %}
   </div>
 </body>
 </html>
@@ -86,8 +96,18 @@ def render_invitation_email(
     portal_url: str,
     expiry_hours: int,
     docs: list[dict],
+    template_config: Optional[dict] = None,
 ) -> str:
-    """Render the invitation e-mail HTML (and plain-text fallback below)."""
+    """
+    Render the invitation e-mail HTML (and plain-text fallback below).
+
+    Maintenance pass Item 1b: ``template_config`` (from the
+    EmailTemplateConfig singleton, when HR customized it) overrides the
+    SAFE-TO-EDIT copy only — subject line, greeting/intro, closing, extra
+    instructions. The functional parts (portal link, document list, expiry
+    notice) are ALWAYS injected here and can not be removed by config.
+    """
+    cfg = template_config or {}
     return _env.from_string(EMAIL_TEMPLATE).render(
         candidate_name=candidate_name,
         company_name=company_name or "Onboard Chaser AI",
@@ -95,6 +115,10 @@ def render_invitation_email(
         portal_url=portal_url,
         expiry_hours=expiry_hours,
         docs=docs,
+        subject_template=cfg.get("subject_template"),
+        body_intro=cfg.get("body_intro"),
+        body_closing=cfg.get("body_closing"),
+        extra_instructions=cfg.get("extra_instructions"),
     )
 
 
@@ -105,12 +129,25 @@ def render_plain_text(
     portal_url: str,
     expiry_hours: int,
     docs: list[dict],
+    template_config: Optional[dict] = None,
 ) -> str:
-    """Very small plain-text fallback so clients that reject HTML still work."""
-    lines = [
-        f"Hello {candidate_name},",
-        f"You have been invited to complete onboarding for {company_name or 'Onboard Chaser AI'}.",
-        f"Your position is {position or ''}.",
+    """
+    Very small plain-text fallback so clients that reject HTML still work.
+    Item 1b: honors the HR-editable copy (subject/intro/closing/extra
+    instructions) exactly like the HTML render; functional parts stay fixed.
+    """
+    cfg = template_config or {}
+    lines = []
+    if cfg.get("body_intro"):
+        lines.append(cfg["body_intro"])
+    else:
+        lines.append(f"Hello {candidate_name},")
+        lines.append(f"You have been invited to complete onboarding for {company_name or 'Onboard Chaser AI'}.")
+    if position:
+        lines.append(f"Your position is {position}.")
+    if cfg.get("extra_instructions"):
+        lines.append(cfg["extra_instructions"])
+    lines += [
         f"Secure portal link: {portal_url}",
         f"This link will expire in {expiry_hours} hour{'' if expiry_hours == 1 else 's'}.",
         "",
@@ -123,11 +160,12 @@ def render_plain_text(
         if instr:
             line += f": {instr}"
         lines.append(line)
-    lines += [
-        "",
-        f"If you have any questions, reply to this email or contact our HR team.",
-        f"Portal URL (copy & share): {portal_url}",
-    ]
+    lines += [""]
+    if cfg.get("body_closing"):
+        lines.append(cfg["body_closing"])
+    else:
+        lines.append("If you have any questions, reply to this email or contact our HR team.")
+    lines.append(f"Portal URL (copy & share): {portal_url}")
     return "\n".join(lines)
 
 
@@ -254,37 +292,123 @@ def render_reminder_plain_text(
 
 
 # ────────────────────────────────────────────────────────────────────────
-# 2️⃣ Resend SDK wrapper (fallback when RESEND_API_KEY is absent)
+# 2️⃣ Resend SDK wrapper (maintenance pass: resend SDK 2.0 + placeholder
+#    detection + granular config status for the settings page)
 # ────────────────────────────────────────────────────────────────────────
+# Values that look like keys but aren't: .env ships "re_your_api_key_here"
+# which is non-empty, so a naive bool() check called it "configured" and the
+# send then died inside the provider with "API key is invalid".
+_PLACEHOLDER_KEY_VALUES = {"", "your_api_key_here", "change-me", "changeme"}
+
+
+def _is_placeholder_key(value: str) -> bool:
+    v = (value or "").strip()
+    if not v:
+        return True
+    if v.lower() in _PLACEHOLDER_KEY_VALUES:
+        return True
+    if v.lower().startswith("re_your"):
+        return True
+    return False
+
+
+def _email_config_state() -> dict:
+    """
+    Single source of truth for email configuration status (maintenance pass
+    Item 1): whether a REAL Resend key + from address are present. Never
+    returns the key itself — only booleans + the from address.
+    """
+    import resend  # SDK presence is part of "configured"
+
+    key = os.getenv("RESEND_API_KEY") or settings.RESEND_API_KEY or ""
+    configured = bool(resend) and not _is_placeholder_key(key) and bool(settings.EMAIL_FROM)
+    return {
+        "resend_configured": configured,
+        "email_from": settings.EMAIL_FROM or None,
+    }
+
+
 try:
     import resend  # type: ignore
-    _resend_configured = bool(os.getenv("RESEND_API_KEY"))
+    _resend_configured = not _is_placeholder_key(
+        os.getenv("RESEND_API_KEY") or settings.RESEND_API_KEY or ""
+    )
 except Exception:  # pragma: no cover
     _resend_configured = False
 
 
 def is_email_configured() -> bool:
-    """True only when RESEND_API_KEY is set (mirrors the R2 pattern in storage.py)."""
+    """
+    True only when a REAL Resend API key is present (mirrors the R2
+    placeholder-rejecting pattern in storage.py). The shipped placeholder
+    `re_your_api_key_here` counts as NOT configured (maintenance pass fix —
+    it previously slipped through and produced provider auth failures).
+    """
     return _resend_configured
 
 
+# Maintenance pass Item 1: single user-facing hint for "email not configured",
+# reused by send_invitation's not_sent path and the /settings/email-status
+# endpoints (so the UI message matches across all surfaces).
+NOT_CONFIGURED_HINT = (
+    "Email sending is not configured on this server. Ask your administrator "
+    "to set RESEND_API_KEY and EMAIL_FROM in the backend environment."
+)
+
+
 def _send_resend(to: str, subject: str, html: str, text: str) -> dict:
-    """Blocking call to Resend SDK; raises on provider error."""
+    """
+    Blocking call to Resend SDK; raises on provider error.
+
+    Maintenance pass fix: resend==2.0.0 removed the module-level
+    ``resend.send()`` used here before (it raised "module 'resend' has no
+    attribute 'send'" for EVERY send). The 2.x API is:
+        resend.api_key = ...
+        resend.Emails.send({from, to: [..], subject, html, text})
+    """
     if not _resend_configured:
-        raise RuntimeError("RESEND_API_KEY not configured – send_email fell through")
-    msg = resend.send(
-        from_email=settings.EMAIL_FROM,
-        to=to,
-        subject=subject,
-        html=html,
-        text=text,
-    )
-    return msg  # dict with .id, .status, .tracking_domain, etc.
+        raise RuntimeError(
+            "Email sending is not configured on this server. Ask your "
+            "administrator to set RESEND_API_KEY and EMAIL_FROM in the "
+            "backend environment."
+        )
+    resend.api_key = os.getenv("RESEND_API_KEY") or settings.RESEND_API_KEY
+    params = {
+        "from": settings.EMAIL_FROM,
+        "to": [to],  # 2.x expects a list of recipients
+        "subject": subject,
+        "html": html,
+    }
+    if text:
+        params["text"] = text
+    msg = resend.Emails.send(params)
+    return msg  # Email object/dataclass with .id etc.
 
 
 # ────────────────────────────────────────────────────────────────────────
 # 3️⃣ Public API used by the FastAPI route
 # ────────────────────────────────────────────────────────────────────────
+def _load_template_config(db) -> Optional[dict]:
+    """
+    Item 1b: load the HR-editable invitation copy (EmailTemplateConfig
+    singleton). Returns None when no row exists -> callers fall back to the
+    hardcoded template. Also used by the settings API (GET).
+    """
+    try:
+        from app.models.models import EmailTemplateConfig
+        row = db.query(EmailTemplateConfig).filter(EmailTemplateConfig.id == 1).first()
+        if not row:
+            return None
+        return {
+            "subject_template": row.subject_template,
+            "body_intro": row.body_intro,
+            "body_closing": row.body_closing,
+            "extra_instructions": row.extra_instructions,
+        }
+    except Exception:  # table missing / DB not ready -> default template
+        return None
+
+
 def send_invitation(
     *,
     candidate_name: str,
@@ -309,7 +433,7 @@ def send_invitation(
 
     from app.core.security import create_magic_token, validate_magic_token
     from app.core.config import settings
-    from app.models.models import Onboarding, Document, InvitationEmailStatus
+    from app.models.models import Onboarding, Document, InvitationEmailStatus, EmailTemplateConfig
     from app.services.email_service import render_invitation_email, render_plain_text
 
     # ──① Ensure a valid magic link exists ───────────────────────────────
@@ -343,6 +467,7 @@ def send_invitation(
         portal_url=portal_url,
         expiry_hours=expiry_hours,
         docs=docs_list,
+        template_config=_load_template_config(db),
     )
     text = render_plain_text(
         candidate_name=candidate_name,
@@ -351,6 +476,7 @@ def send_invitation(
         portal_url=portal_url,
         expiry_hours=expiry_hours,
         docs=docs_list,
+        template_config=_load_template_config(db),
     )
 
     # ──② Send via Resend (or graceful fallback) ────────────────────────
@@ -363,18 +489,34 @@ def send_invitation(
     }
 
     if not is_email_configured():
-        # Log, but **do not** raise – the API layer will record `not_sent`
-        # (the caller can decide to retry later or notify the HR admin).
+        # Log, but **do not** raise – the API layer records `not_sent`.
+        # Maintenance pass Item 1: the reason text now tells the HR admin
+        # exactly what to do (deployment-level fix), instead of a generic
+        # "check RESEND_API_KEY" that read like a per-user problem.
         import logging
         logging.getLogger(__name__).warning(
-            "RESEND_API_KEY not configured – invitation e‑mail not sent (not_sent status)"
+            "RESEND_API_KEY missing/placeholder – invitation e-mail not sent (not_sent)"
         )
         result["status"] = InvitationEmailStatus.NOT_SENT
-        result["last_error"] = "RESEND_API_KEY not configured"
+        result["last_error"] = NOT_CONFIGURED_HINT
         return result
 
     try:
-        subject = f"Complete your onboarding for {company_name or 'Onboard Chaser AI'}"
+        # Item 1b: subject honors the HR-editable template when present.
+        # Only {company_name} and {candidate_first_name} are substituted —
+        # via plain str.replace, so ANY other content (stray braces,
+        # {unknown_fields}, {0}) passes through byte-for-byte and can never
+        # raise KeyError/IndexError -> no 500 from a pasted template.
+        tpl = _load_template_config(db) or {}
+        raw_subject = tpl.get("subject_template")
+        if raw_subject:
+            subject = (
+                raw_subject
+                .replace("{company_name}", company_name or "Onboard Chaser AI")
+                .replace("{candidate_first_name}", candidate_name.split(" ")[0])
+            )
+        else:
+            subject = f"Complete your onboarding for {company_name or 'Onboard Chaser AI'}"
         resp = _send_resend(to=candidate_email, subject=subject, html=html, text=text)
         # Resend returns a dict‑like object; we record what we can.
         result.update(

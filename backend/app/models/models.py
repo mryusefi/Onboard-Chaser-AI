@@ -113,6 +113,37 @@ class ReminderConfig(Base):
     )
 
 
+class EmailTemplateConfig(Base):
+    """
+    Maintenance pass Item 1b — HR-editable invitation email COPY.
+
+    Same singleton pattern as ReminderConfig (id=1, auto-created on first
+    read, fallback to the hardcoded template when the row is absent).
+
+    SECURITY/SCOPE: this stores only the SAFE-TO-EDIT copy (subject line,
+    greeting/body intro, closing + optional extra instructions). The
+    functional parts of the email — the portal link, the document list, the
+    expiry notice — are always injected programmatically by email_service.py
+    and can NOT be edited or removed here. The RESEND_API_KEY itself is a
+    server environment variable and is deliberately NOT configurable from
+    the UI or stored in the database (same rule as R2 credentials).
+    """
+    __tablename__ = "email_template_configs"
+
+    id = Column(Integer, primary_key=True, default=1)  # singleton row (id=1)
+    # {company_name} and {candidate_first_name} placeholders are substituted
+    # by email_service at render time; None/empty subject falls back to the
+    # built-in default subject.
+    subject_template = Column(String(200), nullable=True)
+    body_intro = Column(Text, nullable=True)       # greeting + intro paragraph
+    body_closing = Column(Text, nullable=True)     # closing lines before the link CTA
+    extra_instructions = Column(Text, nullable=True)  # HR's extra bullet points
+    updated_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
 class User(Base):
     __tablename__ = "users"
 
